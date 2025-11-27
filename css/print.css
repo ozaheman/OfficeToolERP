@@ -1,0 +1,27 @@
+/* css/print.css */
+
+/* Hide everything by default when printing */
+body * {
+    visibility: hidden;
+}
+
+/* Make only the form modal and its content visible */
+#form-modal-body, #form-modal-body * {
+    visibility: visible;
+}
+
+/* Position the form content at the top of the page */
+#form-modal-body {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 10px;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure form elements look correct */
+input, textarea, select {
+    border: 1px solid #ccc !important;
+}
