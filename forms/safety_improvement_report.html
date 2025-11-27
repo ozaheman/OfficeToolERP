@@ -1,0 +1,38 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}input,textarea,select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.priority-table{width:auto}.priority-table td{background-color:#f9f9f9;font-weight:bold}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Safety Improvement Report</h4>
+        <table>
+            <tr><th>Project Name</th><td class="project-field">[Project Name]</td><th>Inspection Date</th><td><input type="date"></td></tr>
+            <tr><th>Contractor</th><td><input type="text"></td><th>Reference Number</th><td><input type="text"></td></tr>
+            <tr><th>Inspector</th><td><input type="text"></td><td colspan="2"></td></tr>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>Observations</h4>
+        <table>
+            <thead><tr><th>SL No.</th><th>Priority</th><th>Description</th><th>Location</th><th>Close out Date</th></tr></thead>
+            <tbody id="sir-body">
+                <tr>
+                    <td>1</td>
+                    <td><select><option>A</option><option>B</option><option>C</option><option>D</option></select></td>
+                    <td><textarea rows="1"></textarea></td>
+                    <td><input type="text"></td>
+                    <td><input type="date"></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="const tbody = document.getElementById('sir-body'); const newRow = tbody.rows[0].cloneNode(true); newRow.cells[0].textContent = tbody.rows.length + 1; Array.from(newRow.querySelectorAll('input, textarea, select')).forEach(i => i.value = i.tagName === 'SELECT' ? 'A' : ''); tbody.appendChild(newRow);" style="margin-top:10px;">+ Add Observation</button>
+    </div>
+    <div class="form-section">
+        <h4>PRIORITY</h4>
+        <table class="priority-table">
+            <tr><td>A - Rectify Immediately</td><td>B - Rectify within 24 hours</td></tr>
+            <tr><td>C - Rectify within 2 days</td><td>D - Rectify within 7 days</td></tr>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>Corrective actions Taken:</h4>
+        <textarea rows="4" style="width:100%"></textarea>
+    </div>
+</div>

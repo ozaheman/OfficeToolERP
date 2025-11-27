@@ -1,0 +1,48 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}.check-item{display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:5px 0;border-bottom:1px solid #eee}.check-item:last-child{border-bottom:none}.check-item label{font-weight:bold}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>EHS Office Inspection Checklist</h4>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+            <div><label>Location/Area:</label><input type="text"></div>
+            <div><label>Issue Date:</label><input type="date" value="2025-04-16"></div>
+            <div><label>Date:</label><input type="date"></div>
+        </div>
+    </div>
+    <div class="form-grid">
+        <div class="form-section">
+            <h4>Machinery & Equipment</h4>
+            <div class="check-item"><label>Condition</label><div><input type="radio" name="m_cond">OK <input type="radio" name="m_cond">Issue</div></div>
+            <div class="check-item"><label>Safeguarding</label><div><input type="radio" name="m_safe">OK <input type="radio" name="m_safe">Issue</div></div>
+            <div class="check-item"><label>Labeling</label><div><input type="radio" name="m_label">OK <input type="radio" name="m_label">Issue</div></div>
+        </div>
+        <div class="form-section">
+            <h4>Electrical</h4>
+            <div class="check-item"><label>Condition</label><div><input type="radio" name="e_cond">OK <input type="radio" name="e_cond">Issue</div></div>
+            <div class="check-item"><label>Protection</label><div><input type="radio" name="e_prot">OK <input type="radio" name="e_prot">Issue</div></div>
+        </div>
+        <div class="form-section">
+            <h4>Hand & Power Tools</h4>
+            <div class="check-item"><label>Condition</label><div><input type="radio" name="t_cond">OK <input type="radio" name="t_cond">Issue</div></div>
+            <div class="check-item"><label>Use</label><div><input type="radio" name="t_use">OK <input type="radio" name="t_use">Issue</div></div>
+            <div class="check-item"><label>Storage</label><div><input type="radio" name="t_store">OK <input type="radio" name="t_store">Issue</div></div>
+        </div>
+        <div class="form-section">
+            <h4>Housekeeping</h4>
+            <div class="check-item"><label>Slip/Trip/Fall</label><div><input type="radio" name="h_slip">OK <input type="radio" name="h_slip">Issue</div></div>
+            <div class="check-item"><label>Waste Disposal</label><div><input type="radio" name="h_waste">OK <input type="radio" name="h_waste">Issue</div></div>
+            <div class="check-item"><label>Storage of Items</label><div><input type="radio" name="h_store">OK <input type="radio" name="h_store">Issue</div></div>
+        </div>
+        <div class="form-section">
+            <h4>Fire Protection Equipment</h4>
+            <div class="check-item"><label>Identification</label><div><input type="radio" name="f_id">OK <input type="radio" name="f_id">Issue</div></div>
+            <div class="check-item"><label>Availability</label><div><input type="radio" name="f_avail">OK <input type="radio" name="f_avail">Issue</div></div>
+            <div class="check-item"><label>Accessibility</label><div><input type="radio" name="f_access">OK <input type="radio" name="f_access">Issue</div></div>
+        </div>
+        <div class="form-section">
+            <h4>Health & Environment Controls</h4>
+            <div class="check-item"><label>Ventilation</label><div><input type="radio" name="he_vent">OK <input type="radio" name="he_vent">Issue</div></div>
+            <div class="check-item"><label>Illumination</label><div><input type="radio" name="he_light">OK <input type="radio" name="he_light">Issue</div></div>
+            <div class="check-item"><label>Hygiene Conditions</label><div><input type="radio" name="he_hygiene">OK <input type="radio" name="he_hygiene">Issue</div></div>
+        </div>
+    </div>
+</div>

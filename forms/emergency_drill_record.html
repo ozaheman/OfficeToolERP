@@ -1,0 +1,57 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea,.form-grid select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.checkbox-group{display:flex;flex-wrap:wrap;gap:10px 15px;padding-left:10px}.checkbox-group label{display:flex;align-items:center;gap:5px;font-weight:400;text-align:left}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Emergency Drill Record Sheet</h4>
+        <div class="form-grid-2">
+            <div class="form-grid">
+                <label>Site Name:</label> <span class="project-field">[Project Name]</span>
+                <label>Location:</label> <input type="text">
+            </div>
+            <div class="form-grid">
+                <label>Date:</label> <input type="date">
+                <label>Region:</label> <input type="text">
+            </div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Drill Details</h4>
+        <div class="form-grid">
+            <label>Type of Emergency:</label> <textarea rows="2" placeholder="Brief summary of drill scenario"></textarea>
+        </div>
+        <div class="checkbox-group" style="justify-content:center; margin:10px 0;">
+            <label><input type="radio" name="drill_type"> Pre-Arranged</label>
+            <label><input type="radio" name="drill_type"> Surprise Drill</label>
+        </div>
+        <div class="form-grid" style="grid-template-columns:repeat(4, 1fr); gap:10px;">
+            <div><label style="text-align:left;">Time Alarm Activated:</label><input type="time"></div>
+            <div><label style="text-align:left;">Response Time:</label><input type="text" placeholder="(All staff reported)"></div>
+            <div><label style="text-align:left;">Finish Time:</label><input type="time"></div>
+            <div><label style="text-align:left;">Response Duration:</label><input type="text"></div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Personnel Record</h4>
+        <table style="width:100%; border-collapse:collapse;">
+            <thead><tr><th>Sections</th><th>Present Today</th><th>Head count</th><th>Difference</th></tr></thead>
+            <tbody>
+                <tr><td>Staff</td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Contractor/Clients</td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Visitors</td><td><input type="number"></td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><th>Total Personnel</th><th><input type="number"></th><th><input type="number"></th><th><input type="number"></th></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>Observations & Assessment</h4>
+        <div class="form-grid">
+            <label>Observations:</label> <textarea rows="4"></textarea>
+            <label>Improvement Recos:</label> <textarea rows="4"></textarea>
+        </div>
+        <div class="checkbox-group" style="justify-content:center; margin-top:15px">
+            <label>Overall Assessment:</label>
+            <label><input type="radio" name="assessment"> Satisfactory</label>
+            <label><input type="radio" name="assessment"> Fair</label>
+            <label><input type="radio" name="assessment"> Poor/Needs Improvement</label>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,58 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:8pt}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background-color:#f2f2f2}input,textarea,select{width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:8pt}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Variation Order Register</h4>
+        <p><strong>Project:</strong> <span class="project-field">[Project Name]</span></p>
+    </div>
+    <div class="form-section" style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2">Engineer's Instruction (El No.)</th>
+                    <th rowspan="2">El Date Issued</th>
+                    <th rowspan="2">Variation Order Request (VOR No.)</th>
+                    <th rowspan="2">VOR Date</th>
+                    <th rowspan="2">Variation Order (VO No.)</th>
+                    <th rowspan="2">Variation Date</th>
+                    <th rowspan="2">VO Amount (AED)</th>
+                    <th rowspan="2">Incoming Reference No.</th>
+                    <th rowspan="2">Subject</th>
+                    <th colspan="3">Contractor's Variation</th>
+                    <th colspan="4">CHAWLA ARCH FINAL APPROVAL</th>
+                    <th rowspan="2">Last Status</th>
+                    <th rowspan="2">File No.</th>
+                </tr>
+                <tr>
+                    <th>Amount</th>
+                    <th>Total (+/-)</th>
+                    <th>Replied By</th>
+                    <th>Approved Date</th>
+                    <th>Approval Ref.</th>
+                    <th>Approved Amount</th>
+                </tr>
+            </thead>
+            <tbody id="vo-register-body">
+                <tr>
+                    <td><input type="text"></td>
+                    <td><input type="date"></td>
+                    <td><input type="text"></td>
+                    <td><input type="date"></td>
+                    <td><input type="text"></td>
+                    <td><input type="date"></td>
+                    <td><input type="number"></td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                    <td><input type="number"></td>
+                    <td><input type="number"></td>
+                    <td><input type="text"></td>
+                    <td><input type="date"></td>
+                    <td><input type="text"></td>
+                    <td><input type="number"></td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="const tbody = document.getElementById('vo-register-body'); const newRow = tbody.rows[0].cloneNode(true); Array.from(newRow.querySelectorAll('input')).forEach(i => i.value = ''); tbody.appendChild(newRow);" style="margin-top:10px;">+ Add VO</button>
+    </div>
+</div>

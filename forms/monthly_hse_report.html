@@ -1,0 +1,43 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid label{font-weight:700}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}td:first-child{font-weight:bold}input,textarea,select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <div class="form-grid">
+            <div><label>Project Name:</label> <span class="project-field">[Project Description]</span></div>
+            <div><label>Date:</label> <input type="date"></div>
+            <div><label>Contractor:</label> <input type="text"></div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>GENERAL INFORMATION</h4>
+        <table>
+            <tr><td>Reporting Month</td><td><input type="month"></td></tr>
+            <tr><td>Man Power (Daily Average)</td><td><input type="number"></td></tr>
+            <tr><td>Total Man Hours in the Month</td><td><input type="number"></td></tr>
+            <tr><td>Total Project Man Hours to Date</td><td><input type="number"></td></tr>
+            <tr><td>Total Project Man-hours Since last Lost Time Injury</td><td><input type="number"></td></tr>
+            <tr><td>Accident Frequency Rate (Current Month)</td><td><input type="text"></td></tr>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>INCIDENT SUMMARY</h4>
+        <table>
+            <thead><tr><th>Incident Type</th><th>Reporting Month</th><th>Cumulative</th></tr></thead>
+            <tbody>
+                <tr><td>Total Number of work related Fatal Incidents</td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Total Number of Major Injuries</td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Total Number of Lost Time Injuries – over 7 days</td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Total Number of Near Misses</td><td><input type="number"></td><td><input type="number"></td></tr>
+                <tr><td>Total Number of Environmental Accident</td><td><input type="number"></td><td><input type="number"></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>TRAINING & INSPECTION SUMMARY</h4>
+        <table>
+            <tr><td>Total Number of HSE Training Hours Under taken in this Month</td><td><input type="number"></td></tr>
+            <tr><td>Total number of Employees Attended TBT</td><td><input type="number"></td></tr>
+            <tr><td>Total Number of Observation/NCR issued By CHAWLA</td><td><input type="number"></td></tr>
+            <tr><td>Total number of Observation/NCR Closed this Month</td><td><input type="number"></td></tr>
+        </table>
+    </div>
+</div>

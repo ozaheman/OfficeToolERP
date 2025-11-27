@@ -1,0 +1,42 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea,.form-grid select, table{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}table{border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}tr:nth-child(even){background-color:#f9f9f9}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Inspection Request for HVAC Work / Equipment Installation</h4>
+        <div class="form-grid">
+            <label>Project:</label> <span class="project-field">[Project Description]</span>
+            <label>Plot:</label> <span class="plot-field">[Plot No]</span>
+            <label>IR No.:</label> <input type="text" value="IR/ - Rev.00" />
+            <label>Inspection on:</label> <input type="datetime-local" />
+            <label>Subcontractor:</label> <input type="text" />
+            <label>Shop Drawing Ref.:</label> <input type="text" />
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Items to be Checked</h4>
+        <table>
+            <thead>
+                <tr><th>(X)</th><th>Item Description</th><th>Approved</th><th>Not Approved</th><th>Remarks</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><input type="checkbox"></td><td>1. Air Cooled Chiller</td><td><input type="radio" name="h_item1"></td><td><input type="radio" name="h_item1"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>2. Water Cooled Chiller</td><td><input type="radio" name="h_item2"></td><td><input type="radio" name="h_item2"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>3. Cooling Tower</td><td><input type="radio" name="h_item3"></td><td><input type="radio" name="h_item3"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>4. Water Pumps</td><td><input type="radio" name="h_item4"></td><td><input type="radio" name="h_item4"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>5. Expansion Tank</td><td><input type="radio" name="h_item5"></td><td><input type="radio" name="h_item5"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>6. Air Separators</td><td><input type="radio" name="h_item6"></td><td><input type="radio" name="h_item6"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>7. Air Handling Units and H.R.U.</td><td><input type="radio" name="h_item7"></td><td><input type="radio" name="h_item7"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>8. F.C.U.</td><td><input type="radio" name="h_item8"></td><td><input type="radio" name="h_item8"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>9. Package Unit</td><td><input type="radio" name="h_item9"></td><td><input type="radio" name="h_item9"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>10. D/X unit</td><td><input type="radio" name="h_item10"></td><td><input type="radio" name="h_item10"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>11. VAV Boxes</td><td><input type="radio" name="h_item11"></td><td><input type="radio" name="h_item11"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>12. Fans</td><td><input type="radio" name="h_item12"></td><td><input type="radio" name="h_item12"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>13. Control</td><td><input type="radio" name="h_item13"></td><td><input type="radio" name="h_item13"></td><td><input type="text"></td></tr>
+                <tr><td><input type="checkbox"></td><td>14. Heating Boilers</td><td><input type="radio" name="h_item14"></td><td><input type="radio" name="h_item14"></td><td><input type="text"></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="form-section">
+        <h4>Engineer's Comments:</h4>
+        <textarea rows="4" style="width:100%"></textarea>
+    </div>
+</div>

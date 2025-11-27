@@ -1,0 +1,52 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.form-grid-item{border:1px solid #ddd;padding:10px;border-radius:4px}.form-grid-item label{font-weight:700;display:block;margin-bottom:5px}input,textarea,select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Report On Concrete Casting At Site</h4>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div><label>Project:</label><span class="project-field">[Project Name]</span></div>
+            <div><label>Date:</label><input type="date"></div>
+            <div><label>Approved IR:</label><input type="text"></div>
+            <div><label>Location:</label><input type="text"></div>
+            <div><label>Between Gridlines:</label><input type="text"></div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Concrete & Grade Details</h4>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr 1fr;">
+            <div class="form-grid-item"><label>Type of Concrete & Grade:</label><input type="text"></div>
+            <div class="form-grid-item"><label>Starting Time:</label><input type="time"></div>
+            <div class="form-grid-item"><label>Finishing Time:</label><input type="time"></div>
+            <div class="form-grid-item"><label>Approx. Qty (m3):</label><input type="number" step="0.1"></div>
+            <div class="form-grid-item"><label>Number of Trucks:</label><input type="number"></div>
+            <div class="form-grid-item"><label>Average Slump:</label><input type="text"></div>
+        </div>
+        <div style="margin-top:10px">
+            <label style="font-weight:700">Remarks:</label>
+            <textarea rows="2" style="width:100%"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Delivery Details</h4>
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+            <div><label>Contractor's Engineer On Duty:</label><input type="text"></div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>SN</th><th>DO No.</th><th>Vehicle No</th><th>Qty</th><th>Acc.Qty</th><th>Slump</th><th>Temp</th><th>Remarks</th></tr>
+            </thead>
+            <tbody id="concrete-delivery-body">
+                <tr>
+                    <td>1</td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                    <td><input type="number"></td>
+                    <td><input type="number"></td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="const tbody = document.getElementById('concrete-delivery-body'); const newRow = tbody.rows[0].cloneNode(true); newRow.cells[0].textContent = tbody.rows.length + 1; Array.from(newRow.querySelectorAll('input')).forEach(i => i.value = ''); tbody.appendChild(newRow);" style="margin-top:10px;">+ Add Delivery</button>
+    </div>
+</div>

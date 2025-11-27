@@ -1,0 +1,62 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea,.form-grid select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.checkbox-group{display:flex;flex-wrap:wrap;gap:10px 15px;padding-left:10px}.checkbox-group label{display:flex;align-items:center;gap:5px;font-weight:400;text-align:left}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Variation Order Request</h4>
+        <div class="form-grid">
+            <label>Project:</label> <span class="project-field">[Project Description]</span>
+            <label>V.O. Request no:</label> <input type="text" value="V.O.R.........(........)">
+            <label>Date:</label> <input type="date">
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>1. Subject Description:</h4>
+        <textarea rows="2" style="width:100%"></textarea>
+        <div class="form-grid" style="margin-top:10px;">
+            <label>Area of Application:</label> <input type="text">
+            <label>Drawing Ref.:</label> <input type="text">
+            <label>B.O.Q Ref:</label> <input type="text">
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>2. Discipline:</h4>
+        <div class="checkbox-group" style="justify-content:space-around">
+            <label><input type="checkbox"> Civil and Structure</label>
+            <label><input type="checkbox"> Architecture</label>
+            <label><input type="checkbox"> Mechanical</label>
+            <label><input type="checkbox"> Electrical</label>
+            <label><input type="checkbox"> Others(State Below)</label>
+        </div>
+        <input type="text" placeholder="Specify 'Others'" style="margin-top:10px">
+    </div>
+    <div class="form-section">
+        <h4>3. Reason For Variation:</h4>
+        <textarea rows="3" style="width:100%"></textarea>
+    </div>
+    <div class="form-section">
+        <h4>4. Compliance Statement Attached:</h4>
+        <div class="checkbox-group">
+            <label><input type="radio" name="compliance"> Yes</label>
+            <label><input type="radio" name="compliance"> No</label>
+            <label><input type="radio" name="compliance"> N/A</label>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>5. Variation Impact:</h4>
+        <div class="checkbox-group">
+            <label><input type="radio" name="impact"> Time</label>
+            <label><input type="radio" name="impact"> Cost</label>
+            <label><input type="radio" name="impact"> N/A</label>
+        </div>
+    </div>
+     <div class="form-section">
+        <h4>ENGINEER'S COMMENT:</h4>
+        <textarea rows="4" style="width:100%"></textarea>
+         <h4>The Variation Order is:</h4>
+         <div class="checkbox-group">
+            <label><input type="radio" name="vo_status"> Approved</label>
+            <label><input type="radio" name="vo_status"> Approved as Note</label>
+            <label><input type="radio" name="vo_status"> Re-submit for Inspection</label>
+            <label><input type="radio" name="vo_status"> Reject</label>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,60 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea,.form-grid select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.checkbox-group{display:flex;flex-wrap:wrap;gap:10px 15px;padding-left:10px}.checkbox-group label{display:flex;align-items:center;gap:5px;font-weight:400;text-align:left}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Incident Investigation Report</h4>
+        <div class="form-grid">
+            <label>Project Name:</label> <span class="project-field">[Project Name]</span>
+            <label>INVESTIGATION DATE:</label> <input type="date">
+            <label>Date & Time of Incident:</label> <input type="datetime-local">
+            <label>Location:</label> <input type="text">
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Incident Details</h4>
+        <div class="form-grid">
+            <label>Short Description:</label> <textarea rows="2"></textarea>
+            <label>Nature of Injury/Damage:</label> <textarea rows="2"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Line of Investigation</h4>
+        <div class="form-grid">
+            <label>Activities before incident?</label> <textarea rows="2"></textarea>
+            <label>Plants/tools involved?</label> <textarea rows="2"></textarea>
+            <label>Unusual conditions?</label> <textarea rows="2"></textarea>
+            <label>Approved MS/RA?</label> <textarea rows="2"></textarea>
+            <label>Hazard controls in place?</label> <textarea rows="2"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Immediate Cause</h4>
+        <div class="form-grid-2">
+            <div>
+                <h5>Unsafe Acts</h5>
+                <div class="checkbox-group" style="flex-direction:column;align-items:flex-start">
+                    <label><input type="checkbox"> Operating Equipment w/o Authority</label>
+                    <label><input type="checkbox"> Failure to Warn</label>
+                    <label><input type="checkbox"> Using Defective Equipment</label>
+                    <label><input type="checkbox"> Failure to use PPE Correctly</label>
+                </div>
+            </div>
+            <div>
+                <h5>Unsafe Conditions</h5>
+                <div class="checkbox-group" style="flex-direction:column;align-items:flex-start">
+                    <label><input type="checkbox"> Inadequate Guards or Barriers</label>
+                    <label><input type="checkbox"> Defective Tools, Equipment</label>
+                    <label><input type="checkbox"> Poor Housekeeping/Disorder</label>
+                    <label><input type="checkbox"> Inadequate or Excessive Illumination</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Root Cause & Corrective Action</h4>
+        <div class="form-grid">
+            <label>Corrective Action Taken:</label> <textarea rows="3"></textarea>
+            <label>Preventative Measures:</label> <textarea rows="3"></textarea>
+            <label>Lessons Learned:</label> <textarea rows="3"></textarea>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,38 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}input,textarea,select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Snag List</h4>
+        <div class="form-grid">
+            <label>Project:</label> <span class="project-field">[Project Description]</span>
+            <label>Work Package No:</label> <input type="text">
+            <label>Snag List No.:</label> <input type="text">
+            <label>Date of Snagging:</label> <input type="date">
+            <label>HOC Ref:</label> <input type="text">
+        </div>
+    </div>
+    <div class="form-section">
+        <table>
+            <thead>
+                <tr>
+                    <th>Item No.</th>
+                    <th>Location</th>
+                    <th>Description of Snags</th>
+                    <th>Done/Pending (1st)</th>
+                    <th>Done/Pending (2nd)</th>
+                    <th>Remarks/Date for check</th>
+                </tr>
+            </thead>
+            <tbody id="snag-list-body">
+                <tr>
+                    <td><input type="text" value="1"></td>
+                    <td><input type="text"></td>
+                    <td><textarea rows="1"></textarea></td>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                    <td><textarea rows="1"></textarea></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="document.getElementById('snag-list-body').innerHTML += document.getElementById('snag-list-body').rows[0].outerHTML" style="margin-top:10px;">+ Add Snag</button>
+    </div>
+</div>

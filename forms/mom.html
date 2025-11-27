@@ -1,0 +1,48 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid label,.form-section h4{font-weight:700;text-align:right}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background-color:#f2f2f2}input,textarea,select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Minutes of Meeting</h4>
+        <div class="form-grid">
+            <label>Project:</label> <span class="project-field">[Project Description]</span>
+            <label>Contractor:</label> <input type="text">
+            <label>Ref. No MOM:</label> <input type="text">
+            <label>Venue:</label> <input type="text" value="Site Office">
+            <label>Date:</label> <input type="date">
+            <label>Time:</label> <input type="time">
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Meeting Points</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Description</th>
+                    <th>Initial Date</th>
+                    <th>Action Date</th>
+                    <th>Action By</th>
+                    <th>Consultant Remarks</th>
+                    <th>Contractor Remarks</th>
+                </tr>
+            </thead>
+            <tbody id="mom-body">
+                <tr>
+                    <td>1</td>
+                    <td><textarea rows="2"></textarea></td>
+                    <td><input type="date"></td>
+                    <td><input type="date"></td>
+                    <td><input type="text"></td>
+                    <td><textarea rows="2"></textarea></td>
+                    <td><textarea rows="2"></textarea></td>
+                </tr>
+            </tbody>
+        </table>
+        <button type="button" onclick="const tbody = document.getElementById('mom-body'); const newRow = tbody.rows[0].cloneNode(true); newRow.cells[0].textContent = tbody.rows.length + 1; Array.from(newRow.querySelectorAll('input, textarea')).forEach(i => i.value = ''); tbody.appendChild(newRow);" style="margin-top:10px;">+ Add Point</button>
+    </div>
+    <div class="form-section">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+            <div><label>Next Meeting Date:</label><input type="datetime-local"></div>
+            <div><label>Next Meeting Location:</label><input type="text" value="Site Office"></div>
+        </div>
+    </div>
+</div>

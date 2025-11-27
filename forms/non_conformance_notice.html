@@ -1,0 +1,44 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea,.form-grid select{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.checkbox-group{display:flex;flex-wrap:wrap;gap:10px 15px;padding-left:10px}.checkbox-group label{display:flex;align-items:center;gap:5px;font-weight:400;text-align:left}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Non-Conformance-Notice (NCN)</h4>
+        <div class="form-grid">
+            <label>Project ID:</label> <span class="project-field">[Project Name]</span>
+            <label>NCN NO.:</label> <input type="text">
+            <label>Date:</label> <input type="date">
+            <label>Contractor's Name:</label> <input type="text">
+        </div>
+    </div>
+    <div class="form-section">
+        <div class="form-grid">
+            <label>SUBJECT:</label> <input type="text">
+            <label>LOCATION:</label> <input type="text">
+            <label>CONTRACT REQUIREMENTS:</label> <input type="text">
+            <label>SPEC/DRWG REFERENCE:</label> <input type="text">
+            <label>DESCRIPTION:</label> <textarea rows="4"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Contractor's Comments</h4>
+        <div class="checkbox-group">
+            <label><input type="radio" name="ncn_agree"> AGREE</label>
+            <label><input type="radio" name="ncn_agree"> DISAGREE</label>
+        </div>
+        <div class="form-grid" style="margin-top:10px">
+            <label>CONTRACTOR'S CAR NO.:</label> <input type="text">
+            <label>Comments:</label> <textarea rows="3"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Consultant Decision</h4>
+        <div class="checkbox-group">
+            <label><input type="radio" name="ncn_decision"> ACCEPT</label>
+            <label><input type="radio" name="ncn_decision"> AMEND</label>
+            <label><input type="radio" name="ncn_decision"> REJECT</label>
+        </div>
+        <div style="margin-top:10px">
+            <label style="font-weight:700">Decision Details:</label>
+            <textarea rows="3" style="width:100%"></textarea>
+        </div>
+    </div>
+</div>

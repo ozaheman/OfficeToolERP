@@ -1,0 +1,40 @@
+<style>.form-container{font-family:sans-serif;font-size:9pt;color:#333}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:center;text-transform:uppercase;border-bottom:1px solid #ccc;padding-bottom:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background-color:#f2f2f2}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}.form-grid-item{display:grid;grid-template-columns:150px 1fr;align-items:center}.form-grid-item label{font-weight:700}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Payment Certificate</h4>
+        <div class="form-grid">
+            <div class="form-grid-item"><label>Project Name:</label> <span class="project-field">[Project Name]</span></div>
+            <div class="form-grid-item"><label>Contractor:</label> <span>[Contractor Name]</span></div>
+            <div class="form-grid-item"><label>Certificate No.:</label> <span>[Cert No]</span></div>
+            <div class="form-grid-item"><label>Certificate Date:</label> <span>[Cert Date]</span></div>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Payment Details</h4>
+        <table>
+            <thead>
+                <tr><th></th><th>Contract Price</th><th>Previous</th><th>Current</th><th>To Date</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>a. Works done to date</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>b. Materials On Site</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td style="font-weight:bold;">Total work done</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>c. Add: Approved Variations</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td style="font-weight:bold;">Gross amount certified</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>d. Add: Advance Payment</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>e. Less: Recovery of Advance @ 10%</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td style="font-weight:bold;">Sub-total</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>f. Less: Retention @ 10%</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td style="font-weight:bold;">Sub-total</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>g. Less: Contra-Charges</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>h. Less: Payment withheld</td><td></td><td></td><td></td><td></td></tr>
+                <tr><td style="font-weight:bold; background:#eee;">TOTAL</td><td style="background:#eee;"></td><td style="background:#eee;"></td><td style="background:#eee;"></td><td style="background:#eee;"></td></tr>
+                <tr><td colspan="4" style="text-align:right; font-weight:bold;">Less: Previously certified Without VAT</td><td></td></tr>
+                <tr><td colspan="4" style="text-align:right; font-weight:bold;">Amount due for this Certificate No. (excluding VAT)</td><td></td></tr>
+                <tr><td colspan="4" style="text-align:right; font-weight:bold;">VAT 5%</td><td></td></tr>
+                <tr><td colspan="4" style="text-align:right; font-weight:bold; background:#e0e0e0;">Amount due for this Certificate No. (including VAT)</td><td style="background:#e0e0e0;"></td></tr>
+            </tbody>
+        </table>
+        <p style="margin-top:15px"><strong>Amount in words:</strong> [Amount in words here]</p>
+    </div>
+</div>

@@ -1,0 +1,23 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:120px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Site Instruction (SI)</h4>
+        <div class="form-grid">
+            <label>Project:</label> <span class="project-field">[Project Description]</span>
+            <label>From:</label> <input type="text" value="Chawla Arch. Consultant PM">
+            <label>To:</label> <input type="text" placeholder="Contractor's PM">
+            <label>SI No:</label> <input type="text" value="SI-">
+            <label>Date:</label> <input type="date">
+        </div>
+    </div>
+    <div class="form-section">
+        <div class="form-grid">
+            <label>Subject:</label> <input type="text">
+            <label>Instruction:</label> <textarea rows="6"></textarea>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Contractor Response and Action</h4>
+        <textarea rows="6" style="width:100%"></textarea>
+    </div>
+</div>

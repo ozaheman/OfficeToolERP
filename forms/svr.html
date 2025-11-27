@@ -1,0 +1,51 @@
+<style>.form-container{font-family:sans-serif;font-size:10pt;color:#333}.form-grid{display:grid;grid-template-columns:160px 1fr;gap:8px 12px;align-items:center;padding:10px 0}.form-grid label,.form-section h4{font-weight:700;text-align:right}.form-grid input,.form-grid textarea{width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}.form-section{border:1px solid #ddd;padding:15px;margin-top:15px;border-radius:5px}.form-section h4{margin:0 0 15px;text-align:left;border-bottom:1px solid #ccc;padding-bottom:8px}.checkbox-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px}.checkbox-grid label{display:flex;align-items:center;gap:5px;font-weight:400;text-align:left}</style>
+<div class="form-container">
+    <div class="form-section">
+        <h4>Safety Violation Report (SVR)</h4>
+        <div class="form-grid">
+            <label>Project Name:</label> <span class="project-field">[Project Name]</span>
+            <label>SVR No.:</label> <input type="text">
+            <label>Date:</label> <input type="date">
+            <label>Contractor:</label> <input type="text">
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Category (Tick Box Only)</h4>
+        <div class="checkbox-grid">
+            <label><input type="checkbox"> Site Traffic</label>
+            <label><input type="checkbox"> Public Safety</label>
+            <label><input type="checkbox"> Excavation</label>
+            <label><input type="checkbox"> Confined Space Entry</label>
+            <label><input type="checkbox"> Plant & Equipment</label>
+            <label><input type="checkbox"> Unsafe Behavior</label>
+            <label><input type="checkbox"> Lifting Operation</label>
+            <label><input type="checkbox"> Electrical</label>
+            <label><input type="checkbox"> Scaffolding / False Work</label>
+            <label><input type="checkbox"> Fall Protection/ Prevention</label>
+            <label><input type="checkbox"> Fire Protection/ Prevention</label>
+            <label><input type="checkbox"> Unsafe Condition</label>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Reason for Issue</h4>
+        <div class="checkbox-grid">
+            <label><input type="radio" name="svr_reason"> Life threatening hazard with imminent Danger</label>
+            <label><input type="radio" name="svr_reason"> Frequently recurring that the contractor had failed to Action</label>
+        </div>
+    </div>
+    <div class="form-section">
+        <h4>Violation Details</h4>
+        <table style="width:100%; border-collapse:collapse;">
+            <thead><tr><th>Item</th><th>Location</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><input type="text"></td>
+                    <td><input type="text"></td>
+                    <td><textarea rows="2"></textarea></td>
+                </tr>
+            </tbody>
+        </table>
+        <h4>Corrective Action Required By the Contractor</h4>
+        <textarea rows="4" style="width:100%"></textarea>
+    </div>
+</div>
