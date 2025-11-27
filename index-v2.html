@@ -1,0 +1,587 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urban Axis - Unified Management Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* --- General & Project Management Styles --- */
+.preview-header-image { padding: 0 10mm 10mm 10mm; box-sizing: border-box; }
+.preview-header-image img { width: 100%; display: block; }
+.document-category { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 20px; background-color: #fcfcfc; }
+.document-category h4 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+.upload-area { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px; background-color: #f0f5ff; border-radius: 6px; margin-bottom: 15px; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+.thumbnail-container { position: relative; border: 1px solid #ccc; padding: 5px; border-radius: 5px; background: #fff; text-align: center; }
+.thumbnail-delete-btn { position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 21px; cursor: pointer; font-weight: bold; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.thumbnail, .pdf-thumbnail { width: 100%; height: 140px; object-fit: cover; cursor: pointer; border: 1px solid #eee; }
+.file-icon { width: 100%; height: 140px; display: flex; align-items: center; justify-content: center; background-color: #e9ecef; font-weight: bold; cursor: pointer; }
+.thumbnail-caption { font-size: 12px; text-align: center; margin-top: 5px; word-break: break-word; padding: 2px; }
+.danger-button { background-color: #dc3545; color: white; border-color: #dc3545; }
+.danger-button:hover { background-color: #c82333; border-color: #bd2130; }
+.modal-content .output-table .danger { color: #dc3545; font-weight: bold; }
+.modal-content .output-table .warning { color: #ffc107; font-weight: bold; }
+
+code
+Code
+download
+content_copy
+expand_less
+/* --- Project Editor Layout --- */
+    .project-editor-container { display: flex; height: calc(100vh - 60px); }
+    .project-editor-container .controls { width: 450px; min-width: 350px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .project-editor-container .preview-area { flex-grow: 1; display: flex; flex-direction: column; }
+    #resizer { width: 5px; background: #e0e2e5; cursor: col-resize; flex-shrink: 0; }
+    .tab-content-container, .preview-content-container { flex-grow: 1; overflow-y: auto; position: relative; }
+    .tab-content-container { padding: 15px; }
+    .preview-area .preview-controls { display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; border-bottom: 1px solid #ddd; background-color: #f9f9f9; flex-shrink: 0; }
+    .preview-tab-content { padding: 15px; }
+    .milestone-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .milestone-header h3 {
+        margin: 0;
+    }
+    .cumulative-total {
+        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 5px;
+        font-size: 0.9em;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    .cumulative-total.valid {
+        background-color: #e6ffed;
+        color: #006d75;
+    }
+    .cumulative-total.invalid {
+        background-color: #fffbe6;
+        color: #d46b08;
+    }
+    .milestone-percent-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .milestone-label {
+        flex-grow: 1;
+    }
+    /* --- Dashboard Layout & Bulletin --- */
+    .dashboard-main-content { display: flex; gap: 20px; padding: 0 20px 20px 20px; }
+    .project-list-container { flex-grow: 1; }
+    .bulletin-panel { width: 300px; flex-shrink: 0; background-color: #f4f5f7; border-radius: 8px; padding: 15px; height: calc(100vh - 180px); overflow-y: auto; }
+    .bulletin-panel h3 { margin-top: 0; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+    .bulletin-item { font-size: 0.85em; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e9ecef; }
+    .bulletin-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .bulletin-item-title { font-weight: bold; color: #333; }
+    .bulletin-item-time { font-size: 0.9em; color: #888; }
+    .bulletin-item-body { color: #555; }
+    .bulletin-item-body strong { color: #0056b3; }
+
+    /* --- Mini Calendar in Dashboard --- */
+    .mini-calendar { font-size: 0.8em; margin-bottom: 15px; }
+    #dashboard-calendar-header { display: flex; justify-content: space-between; align-items: center; text-align: center; font-weight: bold; padding-bottom: 5px; }
+    #dashboard-calendar-header button { background: none; border: none; cursor: pointer; font-weight: bold; padding: 2px 5px; border-radius: 4px; }
+    #dashboard-calendar-header button:hover { background-color: #e0e0e0; }
+    .dash-cal-grid-header, .dash-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 2px; }
+    .dash-cal-grid-header div { font-weight: bold; color: #666; padding: 3px 0; font-size: 0.9em;}
+    .dash-cal-day { padding: 2px; border-radius: 4px; position: relative; line-height: 22px; }
+    .dash-cal-day.today .dash-cal-day-num { background-color: var(--primary-color); color: white; border-radius: 50%; font-weight: bold; display: inline-block; width: 22px; height: 22px; }
+    .dash-cal-day.other-month .dash-cal-day-num { color: #ccc; }
+    .dash-cal-day.on-leave { background-color: #ffdde0; cursor: help; }
+
+    /* --- Scrum Board Styles --- */
+    #scrum-board-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding-top: 15px; height: calc(100vh - 285px); }
+    .scrum-column { background-color: #f4f5f7; border-radius: 8px; display: flex; flex-direction: column; }
+    .scrum-column-header { padding: 10px 15px; font-weight: bold; border-bottom: 2px solid #e0e2e5; }
+    .scrum-column-content { padding: 10px; flex-grow: 1; overflow-y: auto; }
+    .scrum-card { background-color: #fff; border-radius: 5px; padding: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; transition: background-color 0.2s, opacity 0.2s; }
+    .scrum-card.filtered-out { display: none; }
+    .scrum-card:hover { box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+    .scrum-card.dragging { opacity: 0.5; }
+    .scrum-card-header { display: flex; margin-bottom: 8px; }
+    .scrum-card-tag { font-size: 0.7em; font-weight: bold; color: white; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+    .scrum-card-title { font-size: 0.9rem; margin-bottom: 10px; }
+    .scrum-card-footer { display: flex; justify-content: space-between; font-size: 0.8rem; color: #666; }
+    .scrum-card-done { background-color: #f5f5f5 !important; border-left-color: #bdbdbd !important; opacity: 0.8; }
+    .scrum-card-done .scrum-card-title { text-decoration: line-through; color: #757575; }
+    .scrum-card-done .scrum-card-tag { background-color: #bdbdbd !important; color: #333 !important; }
+    .scrum-card-tag[style*="background-color: #ffe119"] { color: #333; }
+    #design-view .view-controls { padding-bottom: 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+     /* --- Design Studio Summary Panel --- */
+    .design-summary-container {
+        display: flex;
+        gap: 15px;
+        padding: 10px 0;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+    .summary-box {
+        flex: 1;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        border: 1px solid #eee;
+        cursor: pointer;
+        transition: background-color 0.2s, box-shadow 0.2s;
+    }
+    .summary-box:hover {
+        background-color: #f0f0f0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    .summary-box .value {
+        font-size: 2em;
+        font-weight: 600;
+        display: block;
+    }
+    .summary-box .label {
+        font-size: 0.9em;
+        color: #555;
+    }
+    .summary-box.running .value { color: #007bff; }
+    .summary-box.due .value { color: #ffc107; }
+    .summary-box.overdue .value { color: #dc3545; }
+    .summary-box.planned .value { color: #6c757d; }
+    
+    /* --- Full Width Calendar --- */
+    /* By Assignee, Agenda & Calendar View */
+    #design-assignee-container, #design-agenda-container, #design-calendar-container { 
+        padding: 15px; 
+        overflow-y: auto; 
+        height: calc(100vh - 200px); 
+        box-sizing: border-box;
+    }
+    .assignee-column, .agenda-group { margin-bottom: 25px; }
+    .assignee-column h3, .agenda-header { background-color: #f4f5f7; padding: 8px 12px; border-radius: 5px; margin-top: 0; border-bottom: 2px solid #e0e2e5;}
+    .assignee-task-list { list-style: none; padding-left: 0; }
+    .assignee-task-item, .agenda-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: 4px; margin-bottom: 5px; background-color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); cursor: pointer; transition: box-shadow 0.2s; }
+    .assignee-task-item:hover, .agenda-item:hover { box-shadow: 0 2px 5px rgba(0,0,0,0.12); }
+    .assignee-task-item .info, .agenda-item-main { flex-grow: 1; }
+    .assignee-task-item .info .task-name, .agenda-task-name { font-weight: 500; }
+    .assignee-task-item .info .project-id, .agenda-project-id { font-size: 0.8em; color: #888; margin-left: 10px; background: #eee; padding: 2px 5px; border-radius: 3px; }
+    .assignee-task-item .due-date, .agenda-item-details { font-size: 0.85em; color: #555; flex-shrink: 0; min-width: 90px; text-align: right;}
+    .assignee-task-item .due-date.overdue, .agenda-due-date.overdue { color: #dc3545; font-weight: bold; }
+
+    /* --- Design Calendar Styles --- */
+    #design-calendar-container .calendar-header { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; }
+    #design-calendar-container .calendar-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e0e0e0; border: 1px solid #e0e0e0; }
+    #design-calendar-container .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e0e0e0; border: 1px solid #e0e0e0; }
+    #design-calendar-container .calendar-grid-header div { text-align: center; font-weight: bold; padding: 8px 0; background-color: #f4f5f7; }
+    #design-calendar-container .calendar-day { background-color: #fff; min-height: 120px; padding: 4px; display: flex; flex-direction: column; position: relative; transition: background-color 0.3s; }
+    #design-calendar-container .calendar-day.other-month { background-color: #f9f9f9; }
+    #design-calendar-container .calendar-day.other-month .day-number { color: #aaa; }
+    #design-calendar-container .day-header { display: flex; justify-content: flex-end; align-items: center; gap: 4px; height: 18px; /* Removed absolute positioning */ }
+    #design-calendar-container .project-count-badge { background-color: #e9ecef; color: #555; font-size: 0.7em; padding: 2px 5px; border-radius: 8px; }
+    #design-calendar-container .overdue-indicator { font-size: 0.8em; }
+    #design-calendar-container .day-number { font-size: 0.8em; font-weight: bold; color: #333; }
+    #design-calendar-container .day-events { 
+        flex-grow: 1; 
+        margin-top: 4px; 
+        display: flex;
+        flex-direction: column;
+        gap: 2px; /* Space between bars */
+    }
+    .event-bar {
+        height: 20px;
+        color: white;
+        padding: 0 5px;
+        overflow: hidden;
+        position: relative;
+    }
+    .event-bar-label {
+        font-size: 0.8em;
+        line-height: 20px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        display: block;
+    }
+    .bar-start {
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+    }
+    .bar-end {
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+    .bar-single {
+        border-radius: 10px;
+    }
+    /* Style to create a circle marker on the due date */
+    .bar-end::after, .bar-single::after {
+        content: '';
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        background-color: #fff;
+        border-radius: 50%;
+        border: 1px solid rgba(0,0,0,0.2);
+        box-shadow: 0 0 3px rgba(0,0,0,0.3);
+    }
+    #design-calendar-container .event-dot { font-size: 0.75em; padding: 2px 4px; border-radius: 3px; margin-bottom: 3px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: help; }
+    #design-calendar-container .event-dot.overdue { border: 1px solid #c00; box-shadow: 0 0 4px rgba(255,0,0,0.5); }
+</style>
+</head>
+<body>
+<!-- (The rest of the body is unchanged) -->
+
+<!-- Hidden file inputs for imports -->
+
+<input type="file" id="xml-file-input" accept=".xml,text/xml" style="display:none;">
+<input type="file" id="site-update-file-input" accept=".xml,text/xml" style="display:none;">
+
+<div id="app-container">
+<!-- View 1: Main Project Dashboard -->
+<div id="dashboard-view" class="view active">
+<header class="app-header">
+<h1>Project Management Dashboard</h1>
+<div class="dashboard-summary-container">
+<div id="pending-invoices-summary" class="summary-item" title="Click to view details"><div class="label">Pending Invoices</div><div id="pending-invoices-count" class="value">0</div></div>
+<div class="summary-item"><div class="label">Pending Amount</div><div id="pending-invoices-amount" class="value">AED 0</div></div>
+<div class="summary-item"><div class="label">Last Paid Amount</div><div id="last-paid-amount" class="value">AED 0</div></div>
+<div class="summary-item"><div class="label">On Hold Amount</div><div id="on-hold-amount" class="value">AED 0</div></div>
+<div id="expiring-documents-summary" class="summary-item" title="Click to view details"><div class="label">Expiring Documents</div><div id="expiring-documents-count" class="value">0</div></div>
+</div>
+<div class="dashboard-header-controls">
+<button id="design-studio-btn" class="secondary-button">Design Studio</button>
+
+<form action="hr_management.html">
+    <input type="submit" value="HR & Office" />
+</form>
+<form action="vendor_management.html">
+    <input type="submit" value="Vendor DB" />
+</form>
+<!-- <button id="office-management-btn" onclick="hr_management.html" class="secondary-button">HR & Office</button> -->
+<!-- <button id="office-management-btn" onclick="hr_management.html" class="secondary-button">HR & Office</button> -->
+
+
+<!-- <a href="vendor_management.html" class="secondary-button">Vendor DB</a> -->
+            <button id="load-from-file-btn" class="secondary-button">Import Master</button>
+            <button id="load-site-update-btn" class="secondary-button">Import Site Data</button>
+            <button id="save-to-file-btn">Export Master</button>
+            <button id="new-project-btn">+ New Project</button>
+        </div>
+    </header>
+    <div class="dashboard-controls">
+        <input type="text" id="search-box" placeholder="Search by Client, Plot, Invoice No, Project Type, Area...">
+        <button id="toggle-invoices-btn">Show All Invoices</button>
+    </div>
+    <div class="dashboard-main-content">
+        <div class="project-list-container">
+            <table id="project-list-table">
+                <thead><tr><th>Job No</th><th>Client / Contact</th><th>Plot / Type / Date</th><th>Project Status</th><th>Documents</th><th style="width: 30%;">Invoice Details</th><th>Actions</th></tr></thead>
+                <tbody id="project-list-body"></tbody>
+            </table>
+        </div>
+        <div class="bulletin-panel">
+            <!-- Mini Calendar -->
+            <div id="dashboard-calendar-container" class="mini-calendar">
+                <div id="dashboard-calendar-header">
+                    <button id="dash-cal-prev-btn">&lt;</button>
+                    <span id="dash-cal-month-year"></span>
+                    <button id="dash-cal-next-btn">&gt;</button>
+                </div>
+                <div class="dash-cal-grid-header">
+                    <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                </div>
+                <div id="dash-cal-body" class="dash-cal-grid"></div>
+            </div>
+            <hr style="margin: 15px 0;">
+            <h3>Activity Bulletin</h3>
+            <div id="bulletin-list">
+                <p style="color: #888; text-align: center; padding-top: 20px;">No recent activity.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View 2: Project Editor -->
+<div id="project-view" class="view">
+    <header class="app-header">
+        <h1 id="project-view-title">Edit Project</h1>
+        <div class="dashboard-header-controls">
+            <button id="back-to-dashboard-btn" class="secondary-button">← Back to Dashboard</button>
+            <button id="save-project-btn">Save Project</button>
+        </div>
+    </header>
+    <div class="project-editor-container">
+        <div class="controls">
+            <div class="tabs control-tabs">
+                <button class="tab-button active" data-tab="main">Main</button>
+                <button class="tab-button" data-tab="scope">Scope</button>
+                <button class="tab-button" data-tab="fees">Fees</button>
+                <button class="tab-button" data-tab="invoicing">Invoicing</button>
+                <button class="tab-button" data-tab="documents">Docs</button>
+                <button class="tab-button" data-tab="tender">Tender</button>
+                <button class="tab-button" data-tab="vendors">Vendors</button>
+                <button class="tab-button" data-tab="payment-cert">Payment Cert.</button>
+                <button class="tab-button" data-tab="schedule">Schedule</button>
+                <button class="tab-button" data-tab="project-letters">Letters</button>
+                <button class="tab-button" data-tab="tools">Tools</button>
+            </div>
+            <div class="tab-content-container">
+                <div id="main-tab" class="tab-content active"></div>
+                <div id="scope-tab" class="tab-content"></div>
+                <div id="fees-tab" class="tab-content"></div>
+                <div id="invoicing-tab" class="tab-content"></div>
+                <div id="documents-tab" class="tab-content"></div>
+                <div id="tender-tab" class="tab-content"></div>
+                <div id="vendors-tab" class="tab-content"></div>
+                <div id="payment-cert-tab" class="tab-content"></div>
+                <div id="schedule-tab" class="tab-content"></div>
+                <div id="project-letters-tab" class="tab-content"></div>
+                <div id="tools-tab" class="tab-content"></div>
+            </div>
+        </div>
+        <div id="resizer"></div>
+        <div class="preview-area">
+            <div class="preview-controls">
+                <div class="tabs preview-tabs">
+                    <button class="tab-button active" data-tab="brief-proposal">Brief Proposal</button>
+                    <button class="tab-button" data-tab="full-agreement">Full Agreement</button>
+                    <button class="tab-button" data-tab="assignment-order">Assignment Order</button>
+                    <button class="tab-button" data-tab="proforma">Proforma</button>
+                    <button class="tab-button" data-tab="tax-invoice">Tax Invoice</button>
+                    <button class="tab-button" data-tab="receipt">Receipt</button>
+                    <button class="tab-button" data-tab="tender-package">Tender Package</button>
+                    <button class="tab-button" data-tab="vendor-list">Vendor List</button>
+                    <button class="tab-button" data-tab="payment-certificate">Payment Cert.</button>
+                    <button class="tab-button" data-tab="villa-schedule">Schedule</button>
+                    <button class="tab-button" data-tab="project-letter">Letter</button>
+                </div>
+                <div class="preview-actions">
+                    <select id="page-size-selector">
+                        <option value="A4_portrait">A4 Portrait</option>
+                        <option value="A4_landscape">A4 Landscape</option>
+                        <option value="A3_portrait">A3 Portrait</option>
+                        <option value="A3_landscape">A3 Landscape</option>
+                    </select>
+                    <button id="generate-pdf-btn">Generate PDF</button>
+                </div>
+            </div>
+            <div class="preview-content-container">
+                <div id="brief-proposal-preview" class="preview-tab-content active"></div>
+                <div id="full-agreement-preview" class="preview-tab-content"></div>
+                <div id="assignment-order-preview" class="preview-tab-content"></div>
+                <div id="proforma-preview" class="preview-tab-content"></div>
+                <div id="tax-invoice-preview" class="preview-tab-content"></div>
+                <div id="receipt-preview" class="preview-tab-content"></div>
+                <div id="tender-package-preview" class="preview-tab-content"></div>
+                <div id="vendor-list-preview" class="preview-tab-content"></div>
+                <div id="payment-certificate-preview" class="preview-tab-content"></div>
+                <div id="villa-schedule-preview" class="preview-tab-content"></div>
+                <div id="project-letter-preview" class="preview-tab-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="design-summary-container" id="design-summary-panel">
+<div class="summary-box running" data-view-target="agenda">
+<span class="value" id="summary-running">0</span>
+<span class="label">Running Tasks</span>
+</div>
+<div class="summary-box due" data-view-target="agenda">
+<span class="value" id="summary-due-today">0</span>
+<span class="label">Due Today</span>
+</div>
+<div class="summary-box overdue" data-view-target="agenda">
+<span class="value" id="summary-overdue">0</span>
+<span class="label">Overdue Tasks</span>
+</div>
+<div class="summary-box planned" data-view-target="agenda">
+<span class="value" id="summary-planned">0</span>
+<span class="label">Planned Tasks</span>
+</div>
+</div>
+<div id="design-view" class="view">
+<header class="app-header">
+<h1>Design Studio</h1>
+<div class="dashboard-header-controls">
+<button id="back-to-dashboard-btn-from-design" class="secondary-button">← Back to Dashboard</button>
+</div>
+</header>
+<div class="view-controls">
+<div class="input-group">
+<label for="design-project-selector">Select Project</label>
+<select id="design-project-selector"><option>-- Select a Project --</option></select>
+<button id="add-task-btn" class="primary-button" style="display: none;">+ Add Task</button>
+</div>
+<div class="tabs">
+<button class="tab-button active" data-view="board">Scrum Board</button>
+<button class="tab-button" data-view="agenda">Upcoming Tasks</button>
+<button class="tab-button" data-view="calendar">Monthly Calendar</button>
+<button class="tab-button" data-view="assignee">By Assignee</button>
+</div>
+<div class="input-group" id="department-filter-group" style="display: none;">
+<label for="department-filter">Filter by Department</label>
+<select id="department-filter"></select>
+</div>
+<div class="input-group" id="staff-filter-group" style="display: none;">
+<label for="staff-filter">Filter by Assignee</label>
+<select id="staff-filter"></select>
+</div>
+</div>
+<div id="scrum-board-container" class="design-view-content active">
+<p style="text-align:center; padding-top: 50px; color: #888;">Please select a project to view its design board.</p>
+</div>
+<div id="design-agenda-container" class="design-view-content" style="display:none;"></div>
+<div id="design-calendar-container" class="design-view-content" style="display:none;"></div>
+<div id="design-assignee-container" class="design-view-content" style="display:none;"></div>
+</div>
+
+
+<!-- Modals -->
+<div id="pending-invoice-modal" class="modal-overlay" style="display: none;"><div class="modal-content"><span id="pending-modal-close-btn" class="modal-close-btn">×</span><h2>Pending Invoices</h2><div id="pending-invoice-list"></div></div></div>
+<div id="expiring-documents-modal" class="modal-overlay" style="display: none;"><div class="modal-content"><span id="expiring-modal-close-btn" class="modal-close-btn">×</span><h2>Expiring Documents (Next 30 Days)</h2><div id="expiring-documents-list"></div></div></div>
+<div id="site-files-modal" class="modal-overlay" style="display: none;"><div class="modal-content" style="width: 90%; max-width: 1200px;"><span id="site-files-modal-close-btn" class="modal-close-btn">×</span><h2 id="site-files-modal-title">Site Files</h2><div class="modal-body" style="max-height: 80vh; overflow-y: auto;"><h4>Site Photos</h4><div id="site-photos-gallery" class="gallery-grid"></div><hr><h4>Uploaded Documents</h4><div id="site-docs-gallery" class="gallery-grid"></div></div></div></div>
+<div id="file-preview-modal"><span id="file-modal-close">×</span><div id="file-preview-container"></div></div>
+<div id="add-task-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <span id="add-task-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="add-task-modal-title">Add New Task</h2>
+        <div class="modal-body">
+            <div class="input-group">
+                <label for="add-task-name">Task Name</label>
+                <input type="text" id="add-task-name">
+            </div>
+            <div class="input-group">
+                <label for="add-task-planned-duration">Planned Duration (Days)</label>
+                <input type="number" id="add-task-planned-duration" min="1" value="1">
+            </div>
+            <div class="input-group">
+                <label for="add-task-department">Department</label>
+                <select id="add-task-department"></select>
+            </div>
+            <div class="input-group">
+                <label for="add-task-assignee">Assignee</label>
+                <select id="add-task-assignee"></select>
+            </div>
+            <div class="input-group">
+                <label for="add-task-duedate">Due Date</label>
+                <input type="date" id="add-task-duedate">
+            </div>
+            <div class="input-group">
+                <label><input type="checkbox" id="add-task-to-similar"> Add to all similar project types</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="save-new-task-btn" class="primary-button">Save Task</button>
+        </div>
+    </div>
+</div>
+<!-- Task Editor Modal (NEW) -->
+<div id="task-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <span id="task-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="task-modal-title">Edit Task</h2>
+        <div class="modal-body">
+            <input type="hidden" id="task-modal-id">
+            <input type="hidden" id="task-modal-jobno">
+            <div class="input-group">
+                <label for="task-modal-department">Department</label>
+                <select id="task-modal-department"></select>
+            </div>
+            <div class="input-group">
+                <label for="task-modal-assignee">Assignee</label>
+                <select id="task-modal-assignee"></select>
+            </div>
+            <div class="input-group">
+                <label for="task-modal-duedate">Due Date</label>
+                <input type="date" id="task-modal-duedate">
+            </div>
+            <div class="input-group">
+                <label for="task-modal-status">Status</label>
+                <select id="task-modal-status">
+                    <option>To Do</option>
+                    <option>In Progress</option>
+                    <option>Done</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="save-task-btn" class="primary-button">Save Changes</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- JS Libraries -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- Application Modules -->
+
+<script src="js/logo_base64.js"></script>
+
+<script src="js/wm_base64.js"></script>
+
+<script src="js/constants.js"></script>
+
+<script src="js/letter_formats.js"></script>
+
+<script src="js/project_document_formats.js"></script>
+
+<script src="js/xml_handler.js"></script>
+
+<script src="js/pdf_generator.js"></script>
+
+<script src="js/database.js"></script>
+
+<script src="js/gantt_chart.js"></script>
+
+<script src="js/scrum_board.js"></script>
+
+<script src="js/efficiency_analyzer.js"></script>
+
+<script src="js/design_calendar.js"></script>
+
+<!-- MODIFICATION: Project Tab Modules -->
+<!-- Main App Controller -->
+
+<script src="js/app.js"></script>
+<script src="js/project_tabs/main.js"></script>
+
+<script src="js/project_tabs/scope.js"></script>
+
+<script src="js/project_tabs/fees.js"></script>
+
+<script src="js/project_tabs/invoicing.js"></script>
+
+<script src="js/project_tabs/documents.js"></script>
+
+<script src="js/project_tabs/vendors.js"></script>
+
+<script src="js/project_tabs/payment_cert.js"></script>
+
+<script src="js/project_tabs/schedule.js"></script>
+
+<script src="js/project_tabs/letters.js"></script>
+
+<script src="js/project_tabs/tools.js"></script>
+
+
+
+</body>
+</html>

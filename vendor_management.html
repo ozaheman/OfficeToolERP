@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - Vendor Database</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background-color: #f4f5f7;
+        }
+        .view {
+            padding: 20px;
+        }
+        /* --- MODIFICATION START: New styles for filter controls --- */
+        .filter-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end; /* Aligns labels and inputs nicely */
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group label {
+            font-size: 0.8em;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .input-group select, .input-group input {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .input-group.keyword-group {
+            flex-grow: 1; /* Makes the keyword search box take remaining space */
+        }
+        /* --- MODIFICATION END --- */
+        .vendor-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .vendor-table th, .vendor-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        .vendor-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .vendor-table tr:last-child td {
+            border-bottom: none;
+        }
+        .vendor-table ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="vendor-view" class="view">
+            <header class="app-header">
+                <h1>Vendor & Supplier Database</h1>
+                <a href="index.html" class="secondary-button">← Back to Dashboard</a>
+            </header>
+            
+            <!-- MODIFICATION START: Replaced single search bar with filter group -->
+            <div class="filter-container">
+                <div class="input-group">
+                    <label for="category-filter">Filter by Category</label>
+                    <select id="category-filter">
+                        <option value="">All Categories</option>
+                        <!-- Categories will be populated by JS -->
+                    </select>
+                </div>
+                <div class="input-group keyword-group">
+                    <label for="keyword-search-box">Search by Item, Manufacturer, or Place</label>
+                    <input type="text" id="keyword-search-box" placeholder="e.g., 'Tiles', 'Jotun', 'Dubai'...">
+                </div>
+            </div>
+            <!-- MODIFICATION END -->
+
+            <table class="vendor-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">Category</th>
+                        <th style="width: 30%;">Item / Description</th>
+                        <th>Approved Manufacturers / Suppliers</th>
+                    </tr>
+                </thead>
+                <tbody id="vendor-table-body">
+                    <!-- Content will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Application Modules -->
+    <script src="js/vendor_data.js"></script>
+    <script src="js/vendor_management.js"></script>
+</body>
+</html>

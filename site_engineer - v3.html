@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - Site Engineer Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .site-container { max-width: 1400px; margin: auto; padding: 20px; }
+        .site-main-layout { display: flex; gap: 20px; }
+        .site-project-list { flex: 1; }
+        .site-project-details { flex: 2; background: #f9f9f9; padding: 15px; border-radius: 8px; display: none; }
+        .site-project-details h3 { margin-top: 0; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; }
+        .thumbnail-container { position: relative; border: 1px solid #ccc; padding: 5px; border-radius: 5px; background: #fff; text-align: center; }
+        .thumbnail-delete-btn { position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 21px; cursor: pointer; font-weight: bold; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .thumbnail { width: 100%; height: 110px; object-fit: cover; cursor: pointer; border: 1px solid #eee; }
+        .modal-body { max-height: 80vh; overflow-y: auto; background-color: #fff; padding: 20px; }
+        .form-buttons-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .form-buttons-container .form-btn { flex: 1 1 200px; } /* Makes buttons responsive */
+        .project-header { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="site-container">
+    <header class="app-header">
+        <h1>Site Engineer Dashboard</h1>
+        <div class="dashboard-header-controls">
+             <button id="reload-data-btn">Reload Projects</button>
+            <button id="load-data-btn" class="secondary-button">Load Project File</button>
+            <button id="save-data-btn" style="display:none;">Save & Share Updates</button>
+        </div>
+    </header>
+
+    <div class="site-main-layout">
+        <div class="site-project-list">
+            <h2>Projects</h2>
+            <table id="project-list-table">
+                <thead>
+                    <tr>
+                        <th>Job No</th>
+                        <th>Project / Client</th>
+                        <th>Plot No</th>
+                        <th>Site Status</th>
+                    </tr>
+                </thead>
+                <tbody id="project-list-body">
+                    <tr><td colspan="4">Please load the master project file.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="project-details-view" class="site-project-details">
+            <div class="project-header">
+                <h3 id="details-project-name">Select a Project</h3>
+                <button id="download-zip-btn" class="primary-button">Download as ZIP</button>
+            </div>
+            <p id="details-project-info" style="font-size: 0.9em; color: #555;"></p>
+            <hr>
+            
+            <div class="tabs control-tabs">
+                <button class="tab-button active" data-tab="status">Status & Photos</button>
+                <button class="tab-button" data-tab="docs">Documents</button>
+                <button class="tab-button" data-tab="forms">Forms & Requests</button>
+            </div>
+
+            <!-- Tab Content: Status & Photos -->
+            <div id="status-tab" class="tab-content active">
+                <h4>Update Site Status</h4>
+                <div class="input-group">
+                    <select id="site-status-select">
+                        <option>Pending Start</option>
+                        <option>Mobilization</option>
+                        <option>Shoring & Excavation</option>
+                        <option>Sub-Structure</option>
+                        <option>Super-Structure</option>
+                        <option>Blockwork & Plastering</option>
+                        <option>Finishing</option>
+                        <option>Handover</option>
+                        <option>Completed</option>
+                        <option>On Hold</option>
+                    </select>
+                </div>
+                <h4>Site Photos</h4>
+                <div class="input-group">
+                    <input type="file" id="photo-upload-input" accept="image/*" multiple>
+                </div>
+                <div id="photo-gallery" class="gallery-grid"></div>
+            </div>
+
+            <!-- Tab Content: Documents -->
+            <div id="docs-tab" class="tab-content">
+                <h4>Upload Documents</h4>
+                <div class="input-group">
+                    <input type="text" id="doc-name-input" placeholder="Document Name (e.g., Delivery Note)">
+                    <input type="file" id="doc-upload-input" multiple>
+                </div>
+                <div id="doc-gallery" class="gallery-grid"></div>
+            </div>
+
+            <!-- Tab Content: Forms & Requests -->
+            <div id="forms-tab" class="tab-content">
+                <h4>Available Forms</h4>
+                <div class="form-buttons-container">
+                    <!-- Submittals -->
+                    <button class="form-btn" data-form="pqs">Prequalification Submittal</button>
+                    <button class="form-btn" data-form="shop_drawing_submittal">Shop Drawing Submittal</button>
+                    <button class="form-btn" data-form="document_submittal">Document Submittal (DS)</button>
+                    <button class="form-btn" data-form="material_submittal">Material Submittal (MS)</button>
+                    <button class="form-btn" data-form="rfi">Request For Information (RFI)</button>
+                    <button class="form-btn" data-form="cvi">Confirmation of Verbal Instruction</button>
+                    <button class="form-btn" data-form="site_instruction">Site Instruction (SI)</button>
+                    <!-- Inspections -->
+                    <button class="form-btn" data-form="ir_civil">IR - Civil/Structural</button>
+                    <button class="form-btn" data-form="ir_arch">IR - Architectural</button>
+                    <button class="form-btn" data-form="ir_fire">IR - Fire Protection</button>
+                    <button class="form-btn" data-form="ir_electrical">IR - Electrical</button>
+                    <button class="form-btn" data-form="ir_plumbing">IR - Plumbing</button>
+                    <button class="form-btn" data-form="ir_hvac">IR - HVAC</button>
+                    <button class="form-btn" data-form="ir_external">IR - External Works</button>
+                    <button class="form-btn" data-form="mir">Material Inspection Request (MIR)</button>
+                    <button class="form-btn" data-form="mit">Material Inspection Transmittal</button>
+                    <!-- Reports & Logs -->
+                    <button class="form-btn" data-form="csor">Construction Site Observation</button>
+                    <button class="form-btn" data-form="concrete_casting_report">Concrete Casting Report</button>
+                    <button class="form-btn" data-form="weekly_progress_report">Weekly Progress Report</button>
+                    <button class="form-btn" data-form="weekly_progress_plan">Weekly Progress Plan</button>
+                    <button class="form-btn" data-form="mom">Minutes of Meeting</button>
+                    <button class="form-btn" data-form="mom_attendees">Meeting Attendees</button>
+                    <button class="form-btn" data-form="non_conformance_notice">Non-Conformance Notice (NCN)</button>
+                    <button class="form-btn" data-form="ncn_log">NCN Log</button>
+                    <button class="form-btn" data-form="nominated_subcontractor_log">Nominated Subcontractor Log</button>
+                    <button class="form-btn" data-form="variation_order_request">Variation Order Request</button>
+                    <button class="form-btn" data-form="variation_order_register">Variation Order Register</button>
+                    <button class="form-btn" data-form="snag_list">Snag List</button>
+                    <!-- Checklists -->
+                    <button class="form-btn" data-form="prehandover_landscaping">Pre-Handover: Landscaping</button>
+                    <button class="form-btn" data-form="prehandover_envelope">Pre-Handover: Envelope</button>
+                    <button class="form-btn" data-form="prehandover_fitout">Pre-Handover: Fit Out</button>
+                    <!-- EHS Forms -->
+                    <button class="form-btn" data-form="ehs_office_checklist">EHS Office Checklist</button>
+                    <button class="form-btn" data-form="emergency_drill_record">Emergency Drill Record</button>
+                    <button class="form-btn" data-form="incident_notification">Incident Notification</button>
+                    <button class="form-btn" data-form="incident_investigation_report">Incident Investigation</button>
+                    <button class="form-btn" data-form="safety_improvement_report">Safety Improvement Report</button>
+                    <button class="form-btn" data-form="monthly_hse_report">Monthly HSE Report</button>
+                    <button class="form-btn" data-form="svr">Safety Violation Report (SVR)</button>
+                    <button class="form-btn" data-form="site_safety_tour">Site Safety Tour</button>
+                    <!-- BOQ / Breakdowns (View Only) -->
+                    <button class="form-btn" data-form="breakdown_drainage">BOQ - Drainage & Plumbing</button>
+                    <button class="form-btn" data-form="breakdown_electrical">BOQ - Electrical</button>
+                    <button class="form-btn" data-form="breakdown_hvac">BOQ - HVAC</button>
+                    <button class="form-btn" data-form="breakdown_boundary_wall">BOQ - Boundary Wall</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal for displaying forms -->
+<div id="form-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 90%; max-width: 850px;">
+        <span id="form-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="form-modal-title">Form</h2>
+        <div id="form-modal-body" class="modal-body">
+            <!-- Form content will be injected here -->
+            <!-- Inside the .form-buttons-container div in site_engineer.html -->
+<button class="form-btn" data-form="payment_certificate">Payment Certificate</button>
+<button class="form-btn" data-form="contractor_project_commencement_deliverables">Commencement Deliverables</button>
+        </div>
+        <div style="text-align: right; padding: 10px;">
+             <button class="secondary-button" onclick="window.print()">Print Form</button>
+             <button>Save as Document</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file inputs for loading data -->
+<input type="file" id="project-file-input" accept=".xml,text/xml" style="display:none;">
+<input type="file" id="site-data-file-input" accept=".xml,text/xml" style="display:none;">
+
+<!-- JS Libraries and App Logic -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/xml_handler.js"></script>
+<script src="js/database.js"></script>
+<script src="js/site_app.js"></script>
+
+</body>
+</html>

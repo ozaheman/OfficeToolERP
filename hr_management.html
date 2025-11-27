@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - HR & Office Management</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #f4f7fa; }
+        .hr-container { max-width: 1600px; margin: auto; padding: 20px; }
+        .tool-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px; }
+        .tool-card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;}
+        .tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 20px; flex-wrap: wrap;}
+        .tab-button { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 1em; color: #555; border-bottom: 3px solid transparent; }
+        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .hr-layout { display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: flex-start; }
+        .form-card { padding: 20px; background-color: #f8f9fa; border-radius: 8px; }
+        .letter-preview { border: 1px solid #ddd; padding: 20mm; min-height: 297mm; background: #fff; line-height: 1.6; font-family: 'Times New Roman', serif; font-size: 12pt;}
+        #dynamic-letter-fields .input-group { margin-top: 15px; }
+        .staff-photo-preview { width: 150px; height: 150px; object-fit: cover; border-radius: 50%; margin: 0 auto 15px; display: block; border: 3px solid #eee; }
+        .basic-salary-display { font-size: 0.8em; color: #666; display: block; margin-top: 4px; }
+        .reminder-list ul { list-style: none; padding-left: 0; }
+        .reminder-list li { background: #fff8e1; padding: 10px; border-left: 4px solid #ffc107; margin-bottom: 8px; }
+        .reminder-list li.danger { background: #fbe9e7; border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="hr-container">
+    <header class="app-header">
+        <h1>HR & Office Management</h1>
+        <div class="dashboard-header-controls">
+        
+        <form action="revenue.html"><input type="submit" value="Business Intelligence" /></form>
+<form action="index.html"><input type="submit" value="← Back to Main Dashboard" /></form>
+        
+            <!-- <a href="revenue.html" class="secondary-button">Business Intelligence</a> -->
+            <!-- <a href="index.html" class="secondary-button">← Back to Main Dashboard</a> -->
+        </div>
+    </header>
+
+    <div class="tabs" id="tabs">
+        <button class="tab-button active" data-tab="staff-list">Staff List & Salaries</button>
+        <button class="tab-button" data-tab="letter-generation">Letter Generation</button>
+        <button class="tab-button" data-tab="reminders">Reminders</button>
+        <button class="tab-button" data-tab="offer-letters">Offer Letters</button>
+        <button class="tab-button" data-tab="leave-management">Annual Leaves</button>
+        <button class="tab-button" data-tab="expense-log">Office Expense Log</button>
+        <button class="tab-button" data-tab="payroll">Payroll Tools</button>
+            <button class="tab-button" data-tab="letters">Letter Generation</button>
+            <!-- MODIFICATION: Add Efficiency Report tab -->
+        <button class="tab-button" data-tab="annual-expenses">Annual Expenses</button>
+        <button class="tab-button" data-tab="increments">Staff Increments</button>
+   
+      <button class="tab-button" data-tab="efficiency">Efficiency Report</button>
+        </div>
+
+    <!-- Tab 1: Staff List -->
+    <div id="staff-list-tab" class="tab-content active">
+        <div class="tool-card">
+            <h3>
+                <span>Staff & Salary Overview</span>
+                <button id="add-staff-btn" class="primary-button">+ Add Staff Member</button>
+            </h3>
+            <div class="table-container">
+                <table class="output-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Join Date</th>
+                            <th style="text-align:right;">Gross Salary</th>
+                            <th style="text-align:right;">Est. Gratuity</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staff-list-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Tab 2: Letter Generation -->
+    <div id="letter-generation-tab" class="tab-content">
+        <div class="hr-layout">
+            <div class="form-card">
+                <h3>Generate HR Letter</h3>
+                <div class="input-group">
+                    <label for="letter-type-select">Type of Letter</label>
+                    <select id="letter-type-select">
+                        <option value="">-- Select a Type --</option>
+                        <option value="appreciation">Appreciation Letter</option>
+                        <option value="warning">Warning Letter</option>
+                        <option value="termination">Termination Letter</option>
+                        <option value="salary_certificate">Salary Certificate</option>
+                        <option value="notice">General Notice</option>
+                        <option value="authority">Authority Letter</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="letter-staff-select">Select Staff</label>
+                    <select id="letter-staff-select"></select>
+                </div>
+                <div id="dynamic-letter-fields"></div>
+                <button id="generate-letter-preview-btn" class="primary-button" style="width:100%; margin-top: 20px;">Generate Preview</button>
+            </div>
+            <div class="tool-card">
+                <h3>
+                    <span>Letter Preview</span>
+                    <div>
+                        <select id="letter-page-size-selector" style="margin-right: 10px; padding: 5px;">
+                            <option value="a4">A4</option>
+                            <option value="letter">Letter</option>
+                        </select>
+                        <button id="download-letter-pdf-btn" class="secondary-button" style="display:none;">Download as PDF</button>
+                    </div>
+                </h3>
+                <div id="letter-preview" class="letter-preview">
+                    <p style="text-align: center; color: #888;">Select a letter type and staff member to generate a preview.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Tab 3: Reminders -->
+    <div id="reminders-tab" class="tab-content">
+        <div class="tool-card">
+            <h3>Upcoming Expirations & Due Dates (Next 60 Days)</h3>
+            <div id="reminder-list" class="reminder-list"></div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Offer Letters -->
+    <div id="offer-letters-tab" class="tab-content">
+        <div class="hr-layout">
+            <div class="form-card">
+                <h3>Generate Offer Letter</h3>
+                <div class="input-group">
+                    <label for="candidate-name">Candidate Name</label>
+                    <input type="text" id="candidate-name" value="John Doe">
+                </div>
+                <div class="input-group">
+                    <label for="candidate-role">Role / Position</label>
+                    <input type="text" id="candidate-role" value="Senior Architect">
+                </div>
+                <div class="input-group">
+                    <label for="offered-salary">Gross Monthly Salary (AED)</label>
+                    <input type="number" id="offered-salary" value="15000">
+                </div>
+                <div class="input-group">
+                    <label for="join-date">Expected Join Date</label>
+                    <input type="date" id="join-date">
+                </div>
+                <button id="generate-offer-btn" class="primary-button">Generate Preview</button>
+            </div>
+            <div class="tool-card">
+                <h3>Offer Letter Preview</h3>
+                <div id="offer-letter-preview" class="letter-preview">
+                    <p style="text-align: center; color: #888;">Fill the form and click "Generate Preview".</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 5: Annual Leaves -->
+    <div id="leave-management-tab" class="tab-content">
+        <div class="hr-layout">
+            <div class="form-card">
+                <h3>Log New Leave</h3>
+                <div class="input-group">
+                    <label for="leave-staff-select">Select Staff</label>
+                    <select id="leave-staff-select"></select>
+                </div>
+                <div class="input-group">
+                    <label for="leave-start-date">Start Date</label>
+                    <input type="date" id="leave-start-date">
+                </div>
+                <div class="input-group">
+                    <label for="leave-end-date">End Date</label>
+                    <input type="date" id="leave-end-date">
+                </div>
+                 <div class="input-group">
+                    <label for="leave-type">Leave Type</label>
+                    <select id="leave-type">
+                        <option>Annual</option>
+                        <option>Sick</option>
+                        <option>Unpaid</option>
+                        <option>Emergency</option>
+                    </select>
+                </div>
+                <button id="add-leave-btn" class="primary-button">Add Leave Record</button>
+            </div>
+            <div class="tool-card">
+                <h3>Leave History</h3>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Staff Name</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Remaining Balance</th></tr></thead>
+                        <tbody id="leave-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 6: Office Expense Log -->
+    <div id="expense-log-tab" class="tab-content">
+        <div class="hr-layout" style="grid-template-columns: 1fr 1.5fr;">
+            <div class="form-card">
+                <h3>Add New Expense</h3>
+                 <div class="input-group">
+                    <label for="expense-date">Date</label>
+                    <input type="date" id="expense-date">
+                </div>
+                <div class="input-group">
+                    <label for="expense-category">Category</label>
+                    <select id="expense-category">
+                        <option>Utilities (DEWA)</option>
+                        <option>Office Supplies</option>
+                        <option>Telecommunications</option>
+                        <option>Maintenance</option>
+                        <option>Petty Cash</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                 <div class="input-group">
+                    <label for="expense-description">Description</label>
+                    <input type="text" id="expense-description" placeholder="e.g., Monthly Office Rent">
+                </div>
+                 <div class="input-group">
+                    <label for="expense-amount">Amount (AED)</label>
+                    <input type="number" id="expense-amount">
+                </div>
+                <button id="add-expense-btn" class="primary-button">Log Expense</button>
+            </div>
+            <div class="tool-card">
+                <h3>Expense History & Breakdown</h3>
+                 <div class="chart-container" style="height: 250px; margin-bottom: 20px;">
+                    <canvas id="expense-chart"></canvas>
+                </div>
+                <div class="filter-buttons tabs" id="expense-filter-container">
+                    <button class="secondary-button active" data-period="1">Last 1 Month</button>
+                    <button class="secondary-button" data-period="3">Last 3 Months</button>
+                    <button class="secondary-button" data-period="6">Last 6 Months</button>
+                </div>
+                <div class="table-container" style="margin-top: 15px;">
+                    <table class="output-table">
+                        <thead><tr><th>Date</th><th>Category</th><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
+                        <tbody id="expense-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 7: Annual Expenses -->
+    <div id="annual-expenses-tab" class="tab-content">
+        <div class="tool-card">
+            <h3>Add Recurring Annual Expense</h3>
+            <div class="input-group-grid" style="grid-template-columns: 2fr 1fr 1fr auto; align-items:flex-end; gap:15px;">
+                <div class="input-group"><label>Expense Item (e.g., Trade License)</label><input type="text" id="annual-expense-item"></div>
+                <div class="input-group"><label>Amount (AED)</label><input type="number" id="annual-expense-amount"></div>
+                <div class="input-group"><label>Next Due Date</label><input type="date" id="annual-expense-due-date"></div>
+                <button id="add-annual-expense-btn" class="primary-button">Add Annual Expense</button>
+            </div>
+        </div>
+        <div class="tool-card">
+            <h3>List of Annual Expenses</h3>
+            <p>These expenses are automatically prorated into monthly costs in the Business Intelligence dashboard.</p>
+            <div class="table-container">
+                <table class="output-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th style="text-align:right;">Annual Amount</th>
+                            <th>Next Due Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="annual-expense-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 8: Staff Increments -->
+    <div id="increments-tab" class="tab-content">
+         <div class="hr-layout">
+            <div class="form-card">
+                <h3>Grant Increment</h3>
+                <div class="input-group">
+                    <label for="increment-staff-select">Select Staff</label>
+                    <select id="increment-staff-select"></select>
+                </div>
+                <div class="input-group">
+                    <label for="increment-amount">Increment Amount (AED)</label>
+                    <input type="number" id="increment-amount" placeholder="e.g., 500">
+                </div>
+                <div class="input-group">
+                    <label for="increment-date">Effective Date</label>
+                    <input type="date" id="increment-date">
+                </div>
+                <button id="add-increment-btn" class="primary-button">Record Increment</button>
+            </div>
+            <div class="tool-card">
+                <h3>Increment History</h3>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Staff Name</th><th>Date</th><th style="text-align:right;">Old Salary</th><th style="text-align:right;">Increment</th><th style="text-align:right;">New Salary</th></tr></thead>
+                        <tbody id="increment-log-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODIFICATION: Add new tab-content div for the report -->
+        <div id="efficiency-tab" class="tab-content">
+            <h2>Staff Efficiency Report</h2>
+            <p>This report analyzes completed scrum tasks to compare planned duration vs. actual duration. An efficiency score greater than 100% means tasks were completed faster than planned.</p>
+            <table class="output-table">
+                <thead>
+                    <tr>
+                        <th>Staff Member</th>
+                        <th>Completed Tasks</th>
+                        <th>Total Planned Days</th>
+                        <th>Total Actual Days</th>
+                        <th>Efficiency Score</th>
+                    </tr>
+                </thead>
+                <tbody id="efficiency-report-body">
+                    <tr><td colspan="5" style="text-align:center;">Loading report...</td></tr>
+                </tbody>
+            </table>
+        </div>
+</div>
+
+<!-- Staff Details Modal -->
+<div id="staff-details-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-content" style="max-width: 900px;">
+        <span id="staff-details-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="staff-modal-title">Staff Details</h2>
+        <div id="staff-modal-body" class="modal-body">
+            <div class="hr-layout">
+                <div class="form-card">
+                    <img id="staff-photo-preview" src="placeholder.jpg" alt="Staff Photo" class="staff-photo-preview"/>
+                    <div class="input-group"><label>Update Photo</label><input type="file" id="staff-photo-upload" accept="image/*"></div>
+                    <div class="input-group"><label>Update Passport</label><input type="file" id="staff-passport-upload" accept="image/*,application/pdf"><a id="staff-passport-link" href="#" target="_blank" style="display:none;">View Current</a></div>
+                </div>
+                <div>
+                     <div class="input-group-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="input-group"><label>Name</label><input type="text" id="modal-staff-name"></div>
+                        <div class="input-group"><label>Role</label><input type="text" id="modal-staff-role"></div>
+                        <div class="input-group"><label>Email</label><input type="email" id="modal-staff-email"></div>
+                        <div class="input-group"><label>Date of Birth</label><input type="date" id="modal-staff-dob"></div>
+                        <div class="input-group"><label>Phone No.</label><input type="text" id="modal-staff-phone"></div>
+                        <div class="input-group"><label>Emirates ID</label><input type="text" id="modal-staff-eid"></div>
+                        <div class="input-group"><label>Join Date</label><input type="date" id="modal-staff-join-date"></div>
+                        <div class="input-group"><label>Gross Salary</label><input type="number" id="modal-staff-salary"><span id="modal-basic-salary" class="basic-salary-display"></span></div>
+                    </div>
+                    <div class="input-group"><label>Address</label><textarea id="modal-staff-address" rows="2"></textarea></div>
+                     <div class="input-group-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                        <div class="input-group"><label>Visa Expiry</label><input type="date" id="modal-visa-expiry"></div>
+                        <div class="input-group"><label>S.O.E. Expiry</label><input type="date" id="modal-soe-expiry"></div>
+                        <div class="input-group"><label>License Expiry</label><input type="date" id="modal-license-expiry"></div>
+                        <div class="input-group"><label>Health Card Expiry</label><input type="date" id="modal-health-expiry"></div>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <h4>Staff Loans</h4>
+            <div class="input-group-grid" style="grid-template-columns: 1fr 1fr 2fr auto; align-items:flex-end;">
+                 <div class="input-group"><label>Loan Amount</label><input type="number" id="modal-loan-amount"></div>
+                 <div class="input-group"><label>Date</label><input type="date" id="modal-loan-date"></div>
+                 <div class="input-group"><label>Description</label><input type="text" id="modal-loan-description"></div>
+                 <button id="add-loan-btn" class="secondary-button">Add Loan</button>
+            </div>
+             <table class="output-table">
+                <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="modal-loan-history"></tbody>
+            </table>
+            <div style="text-align:right; margin-top: 20px;">
+                 <button id="delete-staff-btn" class="danger-button" style="display:none; float:left;">Delete Staff Member</button>
+                 <button id="save-staff-details-btn" class="primary-button">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+<script src="js/logo_base64.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/letter_formats.js"></script>
+<script src="js/pdf_generator.js"></script>
+<script src="js/database.js"></script>
+<script src="js/efficiency_analyzer.js"></script>
+<script src="js/hr_management.js"></script>
+
+</body>
+</html>

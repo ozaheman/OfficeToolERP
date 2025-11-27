@@ -1,0 +1,128 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - Financial Planning & Analytics</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #f4f7fa; }
+        .tools-container { max-width: 1600px; margin: auto; padding: 20px; }
+        .tool-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px; }
+        .tool-card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .placeholder { display: flex; align-items: center; justify-content: center; height: 300px; border: 2px dashed #e0e0e0; border-radius: 8px; color: #999; text-align: center; }
+        .tabs { display: flex; border-bottom: 2px solid #ccc; margin-bottom: 20px; }
+        .tab-button { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 1em; color: #555; border-bottom: 3px solid transparent; }
+        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .projections-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; }
+        .summary-item { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; }
+        .summary-item.is-cost .amount { color: #dc3545; }
+        .summary-item.is-bold { font-weight: bold; }
+        .total-row { font-weight: bold; background-color: #f8f9fa; }
+        #boq-search { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="tools-container">
+    <header class="app-header">
+        <h1>Financial Planning & Analytics</h1>
+        <div class="dashboard-header-controls">
+            <a href="index.html" class="secondary-button">← Back to Main Dashboard</a>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-button active" data-tab="projections">Financial Projections</button>
+        <button class="tab-button" data-tab="boq">Cost Estimator (Villa BOQ)</button>
+        <button class="tab-button" data-tab="analytics">Project Analytics</button>
+    </div>
+
+    <!-- Tab 1: Financial Projections -->
+    <div id="projections-tab" class="tab-content active">
+        <div class="projections-layout">
+            <div class="tool-card">
+                <h3>Initial Setup Costs (First 3 Months)</h3>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Item Description</th><th style="text-align:right;">Amount (AED)</th></tr></thead>
+                        <tbody id="initial-costs-body"></tbody>
+                    </table>
+                </div>
+            </div>
+             <div class="tool-card">
+                <h3>Yearly Overheads</h3>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Item Description</th><th style="text-align:right;">Yearly (AED)</th><th style="text-align:right;">Monthly (AED)</th></tr></thead>
+                        <tbody id="overheads-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+         <div class="tool-card">
+            <h3>5-Year Profit & Investment Recovery Summary</h3>
+            <div id="financial-summary-body"></div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Cost Estimator (BOQ) -->
+    <div id="boq-tab" class="tab-content">
+        <div class="tool-card">
+            <h3>Rate Analysis for G+1 Villa (Approx. 5500 Sq.ft)</h3>
+            <input type="text" id="boq-search" placeholder="Search for items like 'Concrete', 'Plaster', 'Excavation'...">
+            <div class="table-container" style="max-height: 70vh; overflow-y: auto;">
+                <table class="output-table">
+                    <thead><tr><th>ID</th><th>Category</th><th>Item Description</th><th>Unit</th><th>Qty</th><th style="text-align:right;">Rate (AED)</th><th style="text-align:right;">Total (AED)</th></tr></thead>
+                    <tbody id="boq-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Project Analytics -->
+    <div id="analytics-tab" class="tab-content">
+        <div class="tool-card">
+             <h3>Live Project Data Analytics</h3>
+             <p>Project data is loaded automatically from the central database.</p>
+             <hr>
+             <div class="projections-layout">
+                <div>
+                    <h4>Project Financial Burnout</h4>
+                    <div class="input-group" style="margin-bottom: 15px;">
+                        <label for="burnout-project-select">Select Project</label>
+                        <select id="burnout-project-select" disabled><option>Loading projects...</option></select>
+                    </div>
+                    <div id="burnout-chart-container">
+                        <canvas id="burnoutChart"></canvas>
+                        <div id="burnout-placeholder" class="placeholder"><p>Select a project to view its planned vs. actual fee collection timeline.</p></div>
+                    </div>
+                </div>
+                <div>
+                    <h4>Revenue by Project Type</h4>
+                    <div id="revenue-chart-container">
+                        <canvas id="revenuePieChart"></canvas>
+                        <div id="revenue-placeholder" class="placeholder"><p>Loading project data...</p></div>
+                    </div>
+                </div>
+             </div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="project-file-input" accept=".xml,text/xml" style="display:none;">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="js/xml_handler.js"></script>
+<script src="js/constants.js"></script> 
+<script src="js/financial_data.js"></script>
+<!-- THIS IS THE FIX: Load the database before the page logic -->
+<script src="js/database.js"></script>
+<script src="js/office_tools.js"></script>
+
+</body>
+</html>

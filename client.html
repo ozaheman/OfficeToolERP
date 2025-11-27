@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - Site Engineer Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
+    <style>
+        .site-container { max-width: 1600px; margin: auto; padding: 20px; }
+        .site-main-layout { display: flex; gap: 20px; }
+        .site-project-list { flex: 1; }
+        .site-project-details { flex: 3; background: #f9f9f9; padding: 15px; border-radius: 8px; }
+        .site-project-details h3 { margin-top: 0; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; }
+        .thumbnail-container { position: relative; border: 1px solid #ccc; padding: 5px; border-radius: 5px; background: #fff; text-align: center; }
+        .thumbnail-container.read-only .thumbnail-delete-btn { display: none; }
+        .thumbnail-delete-btn { position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 21px; cursor: pointer; font-weight: bold; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .thumbnail { width: 100%; height: 110px; object-fit: cover; cursor: pointer; border: 1px solid #eee; }
+        .file-icon { font-size: 2em; font-weight: bold; color: #666; display: flex; align-items: center; justify-content: center; height: 110px; background-color: #f0f0f0; }
+        .modal-body { max-height: 80vh; overflow-y: auto; background-color: #fff; padding: 20px; }
+        .form-buttons-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .form-buttons-container .form-btn { flex: 1 1 200px; }
+        #boq-table, .mom-table, .directory-table, .inventory-table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+        #boq-table th, #boq-table td, .mom-table th, .mom-table td, .directory-table th, .directory-table td, .inventory-table th, .inventory-table td { border: 1px solid #ccc; padding: 4px; text-align: left; }
+        #boq-table th, .mom-table th, .directory-table th, .inventory-table th { background-color: #f2f2f2; }
+        #boq-table td[contenteditable="true"] { background-color: #fff9e6; }
+        #boq-totals { margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 5px; text-align: right; }
+        .progress-bar-container { background: #e9ecef; border-radius: 5px; overflow: hidden; }
+        .progress-bar { background-color: var(--primary-color); height: 24px; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.9em; transition: width 0.4s ease; }
+        .calendar-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: 10px; background: #f0f0f0; border-bottom: 1px solid #ddd; gap: 10px;}
+        .calendar-header h4 { margin: 0; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #ddd; }
+        .calendar-day-header { text-align: center; font-weight: bold; padding: 8px; background-color: #f9f9f9; font-size: 0.8em; }
+        .calendar-day { background-color: #fff; min-height: 100px; padding: 5px; font-size: 0.8em; position: relative; display: flex; flex-direction: column; }
+        .calendar-day.other-month { background-color: #f5f5f5; color: #aaa; }
+        .day-number { font-weight: bold; }
+        .day-events { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+         .event-dot.holiday { background-color: #fd7e14; cursor: help; }
+        .event-dot.leave { background-color: #6f42c1; cursor: help; } 
+        .event-bar.gantt-task { background-color: #6c757d; cursor: help; }
+        
+        .event-dot, .event-bar { display: block; padding: 2px 5px; border-radius: 3px; color: white; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .event-dot.mom { background-color: #007bff; }
+        .event-dot.status { background-color: #28a745; cursor: help; }
+        .event-dot.holiday { background-color: #fd7e14; cursor: help; } 
+        .event-bar.gantt-task { background-color: #6c757d; cursor: help; }
+        .clickable-event { cursor: pointer !important; text-decoration: underline; }
+        #resource-calculator-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        #resource-calculator-table th, #resource-calculator-table td { border: 1px solid #ccc; padding: 6px; }
+        #resource-calculator-table input { width: 80px; text-align: right; border: 1px solid #ddd; padding: 4px; border-radius: 4px; }
+        .resource-total-row { font-weight: bold; background-color: #f2f2f2; }
+        .mom-table input { width: 98%; border: 1px solid #ddd; padding: 4px; border-radius: 4px; }
+        /* MODIFICATION START: Styles for the new MoM list format */
+        .mom-history-list { list-style: none; padding: 0; }
+        .mom-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 5px; border-bottom: 1px solid #eee; }
+        .mom-list-item:last-child { border-bottom: none; }
+        .mom-list-info { flex-grow: 1; margin-right: 15px; }
+        .mom-list-info small { color: #666; font-style: italic; }
+        /* MODIFICATION END */
+    </style>
+</head>
+<body>
+
+<div class="site-container">
+    <header class="app-header">
+        <h1>Client's Dashboard</h1>
+        <div class="dashboard-header-controls">
+            <button id="load-data-btn" class="secondary-button">Load Project File</button>
+            <button id="import-leave-btn" class="secondary-button">Import Staff Leave</button> 
+            <button id="save-data-btn">Save & Share Updates</button>
+        </div>
+    </header>
+
+    <div class="site-main-layout">
+        <div class="site-project-list">
+            <h2>Projects</h2>
+            <table id="project-list-table">
+                <thead><tr><th>Job No</th><th>Project / Client</th><th>Plot No</th><th>Status / Progress</th></tr></thead>
+                <tbody id="project-list-body"><tr><td colspan="4">Please load the master project file.</td></tr></tbody>
+            </table>
+        </div>
+
+        <div id="project-details-view" class="site-project-details">
+            <button id="back-to-global-btn" class="secondary-button" style="display: none; margin-bottom: 10px;">← All Projects Calendar</button>
+            <h3 id="details-project-name">Select a Project</h3>
+            <p id="details-project-info" style="font-size: 0.9em; color: #555;"></p>
+            <hr>
+            
+            <div id="control-tabs-container" class="tabs control-tabs">
+                <button class="tab-button" data-tab="status">Status & Photos</button>
+                <button class="tab-button" data-tab="project-docs">Project Docs</button>
+                <button class="tab-button" data-tab="tender-docs">Tender Docs</button>
+                <button class="tab-button" data-tab="vendor-lists">Vendors</button>
+                
+                <!-- NEW TABS -->
+                <button class="tab-button" data-tab="materials">Materials</button> 
+                <button class="tab-button" data-tab="subcontractors">Subcontractors</button>
+                <button class="tab-button" data-tab="long-lead">Long Lead Items</button>
+                <button class="tab-button" data-tab="rfi">RFI Log</button>
+                <button class="tab-button" data-tab="project-uploads">Project Uploads</button>
+                <button class="tab-button" data-tab="bulletin">Bulletin</button>
+                <button class="tab-button" data-tab="snaglist">Snag List</button>
+                <button class="tab-button" data-tab="payment">Payments</button>
+                <button class="tab-button" data-tab="directory">Directory</button>
+                <button class="tab-button" data-tab="visuals">Visual Progress</button>
+                <button class="tab-button" data-tab="inventory">Inventory/Warranties</button>
+                <button class="tab-button" data-tab="budget">Budget/Burn Rate</button>
+                
+                <button class="tab-button" data-tab="site-docs">Site Docs & MoM</button>
+                <button class="tab-button" data-tab="boq">BOQ</button>
+                <button class="tab-button" data-tab="schedule">Schedule</button>
+                <button class="tab-button active" data-tab="calendar">Calendar</button>
+                <button class="tab-button" data-tab="tools">Tools</button>
+                <button class="tab-button" data-tab="forms">Forms</button>
+            </div>
+
+            <!-- TAB CONTENT AREA -->
+            <div id="status-tab" class="tab-content">
+                <h4>Update Site Status</h4>
+                <div class="input-group"><select id="site-status-select"><option>Pending Start</option><option>Mobilization</option><option>Shoring & Excavation</option><option>Sub-Structure</option><option>Super-Structure</option><option>Blockwork & Plastering</option><option>Finishing</option><option>Handover</option><option>Completed</option><option>On Hold</option></select></div>
+                <h4>Upload Site Photos (Photos will be tagged with the current status)</h4>
+                <div class="input-group"><input type="file" id="photo-upload-input" accept="image/*" multiple></div>
+                <div id="photo-gallery" class="gallery-grid"></div>
+            </div>
+
+            <div id="project-docs-tab" class="tab-content">
+                <h4>Project Documents (Client Details, NOCs, Letters, etc.)</h4>
+                <div id="project-docs-gallery" class="gallery-grid"></div>
+            </div>
+
+            <div id="tender-docs-tab" class="tab-content">
+                <h4>Tender Documents (Read-Only)</h4>
+                <div id="tender-docs-gallery" class="gallery-grid"></div>
+            </div>
+
+            <div id="vendor-lists-tab" class="tab-content">
+                <h4>Vendor & Subcontractor Lists (Read-Only)</h4>
+                <div id="vendor-lists-gallery" class="gallery-grid"></div>
+            </div>
+            
+            <div id="site-docs-tab" class="tab-content">
+                <h4>Upload Site Documents (Delivery Notes, Photos of Activity, etc.)</h4>
+                <div class="input-group"><input type="text" id="doc-name-input" placeholder="Document Name/Description"><input type="file" id="doc-upload-input" multiple></div>
+                <div id="site-doc-gallery" class="gallery-grid"></div><hr>
+                <h4>Minutes of Meeting (MoM)</h4>
+                <button id="new-mom-btn" class="form-btn">Create New MoM</button>
+                <div id="mom-list"></div>
+            </div>
+            
+            <div id="boq-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;"><h4>Project Bill of Quantities</h4><div><button id="add-boq-item-btn" class="secondary-button" style="margin-right: 10px;">+ Add Item</button><button id="generate-payment-cert-btn" class="form-btn">Generate Payment Certificate</button></div></div>
+                <div id="boq-totals"><p>Total Contract Value: <strong id="boq-total-value">0.00 AED</strong></p><p>Total Work Done Value: <strong id="boq-work-done-value">0.00 AED</strong></p><h4>Overall Progress: <span id="boq-progress-percentage">0%</span></h4><div class="progress-bar-container"><div id="boq-progress-bar" class="progress-bar">0%</div></div></div>
+                <div style="max-height: 50vh; overflow-y: auto; margin-top: 10px;"><table id="boq-table"><thead><tr><th>ID</th><th>Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th><th>Prev %</th><th>Current %</th><th>Total %</th><th>Work Done Value</th><th>Del</th></tr></thead><tbody id="boq-table-body"></tbody></table></div>
+            </div>
+
+            <div id="schedule-tab" class="tab-content" style="overflow-x: auto;"><h3>Project Construction Schedule (Gantt Chart)</h3><div id="villa-schedule-preview" class="document-preview a4"><p>Schedule will be generated for 'Villa' type projects.</p></div></div>
+
+            <div id="calendar-tab" class="tab-content">
+                <div class="calendar-header">
+                    <div>
+                        <button id="prev-month-btn" class="secondary-button">&lt; Prev</button>
+                        <button id="next-month-btn" class="secondary-button">Next &gt;</button>
+                    </div>
+                    <h4 id="month-year-display">Month Year</h4>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <select id="holiday-country-select" title="Select country for holidays"></select>
+                        <button id="load-holidays-btn">Load Holidays</button>
+                    </div>
+                </div>
+                <div class="calendar-grid-header calendar-grid"><div class="calendar-day-header">Sun</div><div class="calendar-day-header">Mon</div><div class="calendar-day-header">Tue</div><div class="calendar-day-header">Wed</div><div class="calendar-day-header">Thu</div><div class="calendar-day-header">Fri</div><div class="calendar-day-header">Sat</div></div>
+                <div id="calendar-grid-body" class="calendar-grid"></div>
+            </div>
+
+            <div id="tools-tab" class="tab-content">
+                <h3>Project Management Tools</h3>
+                <h4>Resource Calculator</h4>
+                <div class="input-group" style="width: 200px;"><label>Average Man-Day Rate (AED)</label><input type="number" id="resource-day-rate" value="150" style="text-align: right;"></div>
+                <div style="max-height: 60vh; overflow-y: auto; margin-top: 10px;">
+                    <table id="resource-calculator-table">
+                        <thead><tr><th>Task</th><th>Duration (Days)</th><th>Est. Man-Days</th><th>Est. Cost</th></tr></thead>
+                        <tbody id="resource-calculator-body"></tbody>
+                    </table>
+                </div>
+                <hr>
+                <h4>Reporting</h4>
+                <button id="generate-project-report-btn" class="form-btn">Generate Project Status Report</button>
+                <hr>
+                <h4>Approved Vendor/Supplier Search</h4>
+                <div class="input-group">
+                    <label for="vendor-search-input">Search for an item or manufacturer (e.g., "Pump", "Pipe", "Siemens")</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="vendor-search-input" placeholder="Enter item name or manufacturer..." style="flex-grow: 1;">
+                        <button id="list-all-vendors-btn" class="secondary-button">List All</button>
+                    </div>
+                </div>
+                <div id="vendor-search-results" style="max-height: 40vh; overflow-y: auto;">
+                    <p style="color:#888;">Enter a search term or click "List All" to find approved manufacturers.</p>
+                </div>
+                <hr>
+                <h4>Project Files Download</h4>
+                <button id="download-project-zip-btn" class="form-btn">Download All Project Files (.zip)</button>
+            </div>
+
+     <!-- Tab: Forms & Requests -->
+            <div id="forms-tab" class="tab-content">
+                <h4>Available Forms</h4>
+                <div class="form-buttons-container">
+                    <button class="form-btn" data-form="pqs">Prequalification Submittal</button>
+                    <button class="form-btn" data-form="shop_drawing_submittal">Shop Drawing Submittal</button>
+                    <button class="form-btn" data-form="document_submittal">Document Submittal (DS)</button>
+                    <button class="form-btn" data-form="material_submittal">Material Submittal (MS)</button>
+                    <button class="form-btn" data-form="rfi">Request For Information (RFI)</button>
+                    <button class="form-btn" data-form="cvi">Confirmation of Verbal Instruction</button>
+                    <button class="form-btn" data-form="site_instruction">Site Instruction (SI)</button>
+                    <button class="form-btn" data-form="ir_civil">IR - Civil/Structural</button>
+                    <button class="form-btn" data-form="ir_arch">IR - Architectural</button>
+                    <button class="form-btn" data-form="ir_fire">IR - Fire Protection</button>
+                    <button class="form-btn" data-form="ir_electrical">IR - Electrical</button>
+                    <button class="form-btn" data-form="ir_plumbing">IR - Plumbing</button>
+                    <button class="form-btn" data-form="ir_hvac">IR - HVAC</button>
+                    <button class="form-btn" data-form="ir_external">IR - External Works</button>
+                    <button class="form-btn" data-form="mir">Material Inspection Request (MIR)</button>
+                    <button class="form-btn" data-form="mit">Material Inspection Transmittal</button>
+                    <button class="form-btn" data-form="csor">Construction Site Observation</button>
+                    <button class="form-btn" data-form="concrete_casting_report">Concrete Casting Report</button>
+                    <button class="form-btn" data-form="weekly_progress_report">Weekly Progress Report</button>
+                    <button class="form-btn" data-form="weekly_progress_plan">Weekly Progress Plan</button>
+                    <button class="form-btn" data-form="mom">Minutes of Meeting</button>
+                    <button class="form-btn" data-form="mom_attendees">Meeting Attendees</button>
+                    <button class="form-btn" data-form="non_conformance_notice">Non-Conformance Notice (NCN)</button>
+                    <button class="form-btn" data-form="ncn_log">NCN Log</button>
+                    <button class="form-btn" data-form="nominated_subcontractor_log">Nominated Subcontractor Log</button>
+                    <button class="form-btn" data-form="variation_order_request">Variation Order Request</button>
+                    <button class="form-btn" data-form="variation_order_register">Variation Order Register</button>
+                    <button class="form-btn" data-form="snag_list">Snag List</button>
+                    <button class="form-btn" data-form="prehandover_landscaping">Pre-Handover: Landscaping</button>
+                    <button class="form-btn" data-form="prehandover_envelope">Pre-Handover: Envelope</button>
+                    <button class="form-btn" data-form="prehandover_fitout">Pre-Handover: Fit Out</button>
+                    <button class="form-btn" data-form="ehs_office_checklist">EHS Office Checklist</button>
+                    <button class="form-btn" data-form="emergency_drill_record">Emergency Drill Record</button>
+                    <button class="form-btn" data-form="incident_notification">Incident Notification</button>
+                    <button class="form-btn" data-form="incident_investigation_report">Incident Investigation</button>
+                    <button class="form-btn" data-form="safety_improvement_report">Safety Improvement Report</button>
+                    <button class="form-btn" data-form="monthly_hse_report">Monthly HSE Report</button>
+                    <button class="form-btn" data-form="svr">Safety Violation Report (SVR)</button>
+                    <button class="form-btn" data-form="site_safety_tour">Site Safety Tour</button>
+                    <button class="form-btn" data-form="contractor_project_commencement_deliverables">Commencement Deliverables</button>
+                </div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR MATERIALS LIST -->
+            <div id="materials-tab" class="tab-content">
+                <h4>Material Submittal & Approval Tracker</h4>
+                <p>Track all materials requiring approval, including Method Statements and Brochures.</p>
+                <button id="new-material-submittal-btn" class="form-btn" style="width: 250px;">+ New Material Submittal</button>
+                <div id="material-approval-list" class="mom-history-list" style="margin-top: 15px;">
+                    <p>No material submittals tracked yet.</p>
+                </div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR SUBCONTRACTORS LIST -->
+            <div id="subcontractors-tab" class="tab-content">
+                <h4>Approved Subcontractors & Vendors Directory Snippet</h4>
+                <p>List of all subcontractors officially nominated and approved for use on this project.</p>
+                <button id="add-subcontractor-btn" class="form-btn" style="width: 250px;">+ Add Subcontractor Entry</button>
+                 <div id="subcontractor-list" style="margin-top: 15px;">
+                    <p>Subcontractor list content here.</p>
+                </div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR LONG LEAD ITEMS -->
+            <div id="long-lead-tab" class="tab-content">
+                <h4>Long Lead Items Tracker</h4>
+                <p>Monitor items with long procurement durations that impact the critical path.</p>
+                <div style="max-height: 60vh; overflow-y: auto;"><table id="long-lead-table" class="mom-table">
+                    <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Contractor</th><th>Procurement Duration (Days)</th><th>Submittal Date</th><th>Approval Date</th><th>Delivery Date</th><th>Installation Date</th><th>Handover Date</th></tr></thead>
+                    <tbody id="long-lead-table-body"><tr><td colspan="10">No long-lead items entered.</td></tr></tbody>
+                </table></div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR RFI LOG -->
+            <div id="rfi-tab" class="tab-content">
+                <h4>Request For Information (RFI) Log</h4>
+                <p>Log all RFIs raised, track approvals, and view calendar updates.</p>
+                <button id="new-rfi-btn" class="form-btn" style="width: 200px;">+ New RFI</button>
+                <div id="rfi-log-list" style="margin-top: 15px;">
+                    <p>No RFIs logged.</p>
+                </div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR PROJECT UPLOADS / NOC TRACKING -->
+            <div id="project-uploads-tab" class="tab-content">
+                <h4>Project Document & NOC Tracker</h4>
+                <p>Upload key project documents and track the status of required external approvals (NOCs).</p>
+                <div class="input-group" style="margin-bottom: 15px;">
+                    <label>New Document Upload:</label>
+                    <input type="text" placeholder="Document Category (e.g., RTA NOC, Lab Report, Gate Pass)">
+                    <input type="file" multiple>
+                </div>
+                <div id="noc-tracker">
+                    <h5>NOC / Permit Status (External Approvals)</h5>
+                </div>
+            </div>
+            
+            <!-- NEW TAB CONTENT FOR BULLETIN -->
+            <div id="bulletin-tab" class="tab-content">
+                <h4>Site Bulletin & Assigned Tasks</h4>
+                <p>View site-wide announcements and tasks specifically assigned by the Site Engineer.</p>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <h5>New Bulletin / Task Assignment</h5>
+                        <div class="input-group"><label>Subject</label><input type="text" id="bulletin-subject"></div>
+                        <div class="input-group"><label>Details</label><textarea id="bulletin-details" rows="4"></textarea></div>
+                        <div class="input-group"><label>Assigned To (Optional)</label><input type="text" id="bulletin-assigned-to" placeholder="Engineer Name, Contractor, or 'All Staff'"></div>
+                        <button id="post-bulletin-btn" class="form-btn">Post Bulletin / Assign Task</button>
+                    </div>
+                    <div style="flex: 2;">
+                         <h5>Recent Bulletins & Completed Tasks</h5>
+                         <div id="bulletin-feed" style="max-height: 50vh; overflow-y: auto;">
+                            <p>No bulletins posted.</p>
+                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- NEW TAB: SNAG LIST -->
+            <div id="snaglist-tab" class="tab-content">
+                <h4>Snag List Tracker <span style="float: right;">Total Open: <strong id="snag-count">0</strong></span></h4>
+                <button id="add-snag-item-btn" class="form-btn">+ Add New Snag</button>
+                <div style="max-height: 60vh; overflow-y: auto; margin-top: 15px;">
+                    <table class="mom-table">
+                        <thead><tr><th>#</th><th>Location</th><th>Description of Snag</th><th>Responsible Party</th><th>Status</th><th>Del</th></tr></thead>
+                        <tbody id="snag-list-body">
+                            <tr><td colspan="6" style="text-align:center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- NEW TAB: PAYMENTS -->
+            <div id="payment-tab" class="tab-content">
+                <h4>Payment Tracking Summary</h4>
+                <div id="payment-summary">
+                    <p style="text-align:center;">Loading payment details...</p>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="form-btn" data-form="payment_certificate">Generate Payment Certificate</button>
+                    <button class="form-btn" data-form="supplier_invoice_log">Supplier Invoice Log</button>
+                </div>
+            </div>
+
+            <!-- NEW TAB: DIRECTORY -->
+            <div id="directory-tab" class="tab-content">
+                <h4>Project Directory (Consultant, Contractor, Subs)</h4>
+                <div id="directory-list">
+                    <p style="text-align:center;">Loading Directory...</p>
+                </div>
+            </div>
+
+            <!-- NEW TAB: VISUAL PROGRESS (Item 9) -->
+            <div id="visuals-tab" class="tab-content">
+                <h4>Building Element Progress Visualization</h4>
+                <p>Visual mapping of construction element completion percentage, derived from schedule/BOQ updates.</p>
+                <div id="visual-progress-container" style="margin-top: 15px; min-height: 400px; position: relative; border: 1px solid #ccc; padding: 10px;">
+                   <!-- Graphical representation placeholder -->
+                </div>
+            </div>
+            
+            <!-- NEW TAB: INVENTORY / GUARANTEES (Item 10) -->
+            <div id="inventory-tab" class="tab-content">
+                <h4>Product Guarantees & Material Usage Log</h4>
+                <button id="add-inventory-item-btn" class="form-btn">+ Log Material/Warranty</button>
+                <div style="max-height: 60vh; overflow-y: auto; margin-top: 15px;">
+                    <table class="inventory-table">
+                        <thead><tr><th>Item/Model</th><th>Supplier</th><th>Qty Used</th><th>Purchase Date</th><th>Warranty Start</th><th>Warranty End</th><th>Docs</th></tr></thead>
+                        <tbody id="inventory-list-body"><tr><td colspan="7">Inventory list content placeholder.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- NEW TAB: BUDGET / BURN RATE (Item 12) -->
+            <div id="budget-tab" class="tab-content">
+                <h4>Budget vs. Actual Burn Rate</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" placeholder="Total Approved Budget (Locked)" style="width: 300px;">
+                    <button class="secondary-button">Update Budget</button>
+                </div>
+                <div style="max-height: 50vh; overflow-y: auto;"><table class="mom-table">
+                    <thead><tr><th>Cost Code</th><th>Budgeted Amount</th><th>Actual Spent (to Date)</th><th>Variance</th><th>Burn Rate Trend</th></tr></thead>
+                    <tbody id="budget-table-body"><tr><td colspan="5">Budget sheet content placeholder.</td></tr></tbody>
+                </table></div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- MODAL for Minutes of Meeting (Data Entry) -->
+<div id="mom-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 90%; max-width: 1200px;">
+        <span id="mom-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="mom-modal-title">Minutes of Meeting</h2>
+        <div class="modal-body">
+            <input type="hidden" id="mom-edit-index">
+            <div class="input-group-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                <div class="input-group"><label>MoM Ref. No.</label><input type="text" id="mom-ref"></div>
+                <div class="input-group"><label>Meeting Date</label><input type="date" id="mom-date"></div>
+                <div class="input-group"><label>Location</label><input type="text" id="mom-location"></div>
+            </div>
+            
+            <h4>Attendees <button id="add-attendee-btn" class="secondary-button small-button">+ Add</button></h4>
+            <table class="mom-table"><thead><tr><th style="width: 35%;">Name</th><th style="width: 30%;">Position</th><th style="width: 30%;">Company</th><th>Del</th></tr></thead><tbody id="mom-attendees-tbody"></tbody></table>
+            
+            <h4>Project Status Summary</h4>
+            <div class="input-group"><label>Current Status / Notes</label><textarea id="mom-status-summary" rows="3"></textarea></div>
+            
+            <h4>Action Items <button id="add-action-btn" class="secondary-button small-button">+ Add</button></h4>
+            <table class="mom-table"><thead><tr><th style="width: 40%;">Description / Notes</th><th style="width: 20%;">Action By</th><th style="width: 15%;">Target Date</th><th style="width: 20%;">Remarks / Status</th><th>Del</th></tr></thead><tbody id="mom-actions-tbody"></tbody></table>
+
+            <h4>Next Meeting</h4>
+            <div class="input-group-grid" style="grid-template-columns: 1fr 2fr; gap: 15px;">
+                <div class="input-group"><label>Next Meeting Date</label><input type="datetime-local" id="mom-next-meeting"></div>
+                <div class="input-group"><label>Confirmation Notes</label><input type="text" id="mom-next-meeting-notes" placeholder="(To be confirmed a day before)"></div>
+            </div>
+        </div>
+        <div style="text-align: right; padding: 10px; border-top: 1px solid #eee; margin-top: 10px;">
+             <button id="delete-mom-btn" class="danger-button" style="display: none; float: left;">Delete MoM</button>
+             <button id="save-mom-data-btn" class="primary-button">Save MoM</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL for MoM Preview -->
+<div id="mom-preview-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 90%; max-width: 800px;">
+        <span id="mom-preview-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="mom-preview-modal-title">MoM Preview</h2>
+        <div id="mom-preview-modal-body" class="modal-body">
+            <!-- MoM preview content will be injected here -->
+        </div>
+        <div id="mom-preview-modal-footer" style="padding: 10px; border-top: 1px solid #eee; margin-top: 10px;">
+            <!-- Action buttons will be injected here -->
+        </div>
+    </div>
+</div>
+
+<!-- MODAL for Printable Forms -->
+<div id="form-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="width: 90%; max-width: 950px;">
+        <span id="form-modal-close-btn" class="modal-close-btn">×</span>
+        <h2 id="form-modal-title">Form</h2>
+        <div id="form-modal-body" class="modal-body"></div>
+        <div id="form-modal-footer" style="text-align: right; padding: 10px; border-top: 1px solid #eee; margin-top: 10px;">
+             <button class="secondary-button" onclick="window.print()">Print Form</button>
+             <button id="save-form-pdf-btn">Save as PDF</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file inputs -->
+<input type="file" id="project-file-input" accept=".xml,text/xml" style="display:none;">
+<input type="file" id="leave-file-input" accept=".json" style="display:none;"> 
+<!-- JS Libraries and App Logic -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script> 
+<script src="js/logo_base64.js"></script>
+<script src="js/financial_data.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/vendor_list.js"></script>
+<script src="js/xml_handler.js"></script>
+<script src="js/database.js"></script>
+<script src="js/pdf_generator.js"></script>
+<script src="js/gantt_chart.js"></script>
+<script src="js/client.js"></script>
+
+</body>
+</html>

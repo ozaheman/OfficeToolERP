@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Urban Axis - Business Intelligence</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { background-color: #f4f7fa; }
+        .tools-container { max-width: 1600px; margin: auto; padding: 20px; }
+        .tool-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 25px; }
+        .tool-card h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .placeholder { display: flex; align-items: center; justify-content: center; height: 300px; border: 2px dashed #e0e0e0; border-radius: 8px; color: #999; text-align: center; }
+        .projections-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 30px; }
+        .total-row { font-weight: bold; background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="tools-container">
+    <header class="app-header">
+        <h1>Business Intelligence</h1>
+        <div class="dashboard-header-controls">
+        
+        <form action="hr_management.html"><input type="submit" value="Manage HR & Expenses" /></form>
+<form action="index.html"><input type="submit" value="← Back to Main Dashboard" /></form>
+            <!-- <a href="hr_management.html" class="secondary-button">Manage HR & Expenses</a> -->
+            <!-- <a href="index.html" class="secondary-button">← Back to Main Dashboard</a> -->
+        </div>
+    </header>
+
+    <div class="tool-card">
+         <h3>Financial & Resource Analytics</h3>
+         <p>Analytics are generated automatically from project, invoice, and internal financial data.</p>
+         <hr>
+         <div class="projections-layout">
+            
+            <div>
+                <h4>Revenue: History & Forecast</h4>
+                <div id="revenue-forecast-chart-container">
+                    <canvas id="revenueForecastChart"></canvas>
+                </div>
+            </div>
+
+            <div>
+                <h4>Annual Profit vs. Expense</h4>
+                <div id="profit-expense-chart-container">
+                    <canvas id="profitExpensePieChart"></canvas>
+                </div>
+            </div>
+
+            <div>
+                <h4>Resource Allocation (Monthly Salary Costs)</h4>
+                <div id="resource-allocation-chart-container">
+                    <canvas id="resourceAllocationPieChart"></canvas>
+                </div>
+            </div>
+            
+            <div>
+                <h4>Net Profit Distribution Model</h4>
+                <div id="profit-distribution-chart-container">
+                    <canvas id="profitDistributionPieChart"></canvas>
+                </div>
+            </div>
+
+         </div>
+    </div>
+    <div class="tool-card">
+        <h3>Internal Financial Overview</h3>
+        <hr>
+        <div class="projections-layout" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); align-items: flex-start;">
+            <div>
+                <h4>Staff Salary Overview (Monthly)</h4>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Role / Staff Member</th><th style="text-align:right;">Salary (AED)</th></tr></thead>
+                        <tbody id="staff-salary-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h4>Office Expenses (Annual Estimate)</h4>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Item</th><th style="text-align:right;">Amount (AED)</th></tr></thead>
+                        <tbody id="monthly-expense-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h4>Internal Liabilities (Staff Loans)</h4>
+                <div class="table-container">
+                    <table class="output-table">
+                        <thead><tr><th>Staff Member</th><th>Description</th><th style="text-align:right;">Outstanding (AED)</th></tr></thead>
+                        <tbody id="staff-loan-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="js/database.js"></script>
+<script src="js/revenue.js"></script>
+
+</body>
+</html>
