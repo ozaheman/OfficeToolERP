@@ -1,0 +1,1134 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE & CONFIG ---
+    let currentProjectJobNo = null;
+    let DOMElements = {};
+    let showAllInvoices = false;
+	let staffList = [];
+	let officeExpenses = [];
+	let expenseChart = null;
+    let analyticsChart = null;
+    let currentEditingStaffId = null;
+    const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'AED' }).format(Math.round(num || 0));
+    const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    const readFileAsDataURL = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // --- INITIALIZATION ---
+    async function main() {
+        try {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+            await DB.init();
+            cacheDOMElements(); // Cache once initially
+            populateControlTabs();
+            initResizer();
+            populateStaticControls();
+            await loadHRModuleContent(); // Load ALL HR & Office HTML content
+            setupEventListeners();
+            await renderDashboard();
+        } catch (error) {
+            console.error("Fatal Error initializing application:", error);
+            document.body.innerHTML = `<div style='padding:40px; text-align:center; color:red;'><h2>Application Failed to Start</h2><p>Could not initialize the database. Please try clearing your browser's cache and site data for this page and try again.</p><p><i>Error: ${error.message}</i></p></div>`;
+        }
+    }
+
+    // --- ============================ ---
+    // --- PROJECT MANAGEMENT FUNCTIONS ---
+    // --- ============================ ---
+
+    async function saveCurrentProject() {
+        if (!currentProjectJobNo) return;
+        const uiData = getFormDataFromUI();
+        const existingProject = await DB.getProject(currentProjectJobNo) || {};
+        
+        uiData.invoices = existingProject.invoices || [];
+        uiData.billedSupervisionMonths = existingProject.billedSupervisionMonths || 0;
+        uiData.lastBilledProgress = existingProject.lastBilledProgress || 0;
+        uiData.billedExtendedSupervisionMonths = existingProject.billedExtendedSupervisionMonths || 0;
+
+        const projectToSave = { ...existingProject, ...uiData, jobNo: currentProjectJobNo };
+
+        await DB.putProject(projectToSave);
+        alert(`Project ${currentProjectJobNo} saved successfully.`);
+        await renderDashboard();
+    }
+    
+    async function handleProjectFileImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const xmlString = await file.text();
+        const parsedProjects = loadProjectsFromXmlString(xmlString);
+        if (parsedProjects && Array.isArray(parsedProjects)) {
+            if (confirm(`This will import ${parsedProjects.length} projects from the master file. Continue?`)) {
+                for (const p of parsedProjects) {
+                    await DB.processProjectImport(p);
+                }
+                await renderDashboard();
+                alert(`Imported and saved ${parsedProjects.length} projects.`);
+            }
+        } else {
+            alert('Could not parse XML file.');
+        }
+        event.target.value = '';
+    }
+    
+    async function handleSiteUpdateImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const xmlString = await file.text();
+        const parsedUpdates = loadProjectsFromXmlString(xmlString);
+        if (parsedUpdates && Array.isArray(parsedUpdates)) {
+             if (confirm(`This will import site updates for ${parsedUpdates.length} projects. This will overwrite site status, progress, BOQ, and site files. Continue?`)) {
+                for (const update of parsedUpdates) {
+                    await DB.processSiteUpdateImport(update);
+                }
+                await renderDashboard();
+                alert(`Imported site updates for ${parsedUpdates.length} projects.`);
+            }
+        } else {
+            alert('Could not parse site update XML file.');
+        }
+        event.target.value = '';
+    }
+
+    async function handleFileExport() {
+        const projectsToExp = await DB.getAllProjects();
+        if (projectsToExp.length === 0) {
+            alert("No projects to export.");
+            return;
+        }
+
+        for (const project of projectsToExp) {
+            const masterFiles = await DB.getFiles(project.jobNo, 'master');
+            if (masterFiles.length > 0) {
+                project.masterDocuments = masterFiles.map(f => ({
+                    name: f.name, category: f.category, subCategory: f.subCategory, 
+                    expiryDate: f.expiryDate, type: f.fileType, data: f.dataUrl
+                }));
+            }
+        }
+
+        const xmlString = saveProjectsToXmlString(projectsToExp);
+        const blob = new Blob([xmlString], { type: 'application/xml;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `UrbanAxis_MasterProjects_${new Date().toISOString().split('T')[0]}.xml`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    
+    async function renderDashboard() {
+        const allProjects = await DB.getAllProjects();
+        const allSiteData = await DB.getAllSiteData();
+        const siteDataMap = allSiteData.reduce((acc, data) => ({...acc, [data.jobNo]: data }), {});
+        
+        await updateDashboardSummary(allProjects);
+
+        const tbody = DOMElements['project-list-body'];
+        tbody.innerHTML = '';
+        if (allProjects.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">No projects in database. Use "Import from File" to add projects.</td></tr>';
+            return;
+        }
+
+        const searchTerm = DOMElements['search-box'].value.toLowerCase().trim();
+        const searchWords = searchTerm.split(' ').filter(word => word.length > 0);
+
+        const filteredProjects = allProjects.filter(p => {
+            if (searchWords.length === 0) return true;
+            const projectDataToSearch = [p.clientName, p.plotNo, p.jobNo, p.projectType, p.area, ...(p.invoices || []).map(inv => inv.no)].filter(Boolean).join(' ').toLowerCase();
+            return searchWords.every(word => projectDataToSearch.includes(word));
+        });
+
+        for (const p of filteredProjects.sort((a, b) => b.jobNo.localeCompare(a.jobNo))) {
+            const row = tbody.insertRow();
+            row.dataset.jobNo = p.jobNo;
+
+            const siteData = siteDataMap[p.jobNo];
+            const siteStatus = siteData ? siteData.status : 'N/A';
+            const progress = siteData ? siteData.progress || 0 : 0;
+            const officeStatusClass = (p.projectStatus || 'pending').toLowerCase().replace(/ /g, '-');
+            const siteStatusClass = siteStatus.toLowerCase().replace(/ /g, '-');
+            
+            const statusHtml = `
+                <div>Office: <span class="status-${officeStatusClass}">${p.projectStatus || 'Pending'}</span></div>
+                <div style="margin-top:4px;">Site: <span class="status-${siteStatusClass}">${siteStatus}</span></div>
+                <div class="progress-bar-container" style="height:14px; margin-top:4px;"><div class="progress-bar" style="width:${progress}%; height:14px; font-size:0.7em;">${progress}%</div></div>
+            `;
+            
+            const siteFiles = await DB.getFiles(p.jobNo, 'site');
+            let actionsHtml = `<button class="edit-btn">View/Edit</button>`;
+            if (siteFiles.length > 0) {
+                actionsHtml += `<button class="view-site-files-btn secondary-button" data-job-no="${p.jobNo}">Site Files (${siteFiles.length})</button>`;
+            }
+
+            const masterFiles = await DB.getFiles(p.jobNo, 'master');
+            const affectionPlanFile = masterFiles.find(f => f.subCategory === 'affection_plan');
+            const docHtml = affectionPlanFile ? `<a href="#" class="file-link" data-file-id="${affectionPlanFile.id}">Affection Plan</a>` : `<span class="file-link not-available">Affection Plan</span>`;
+
+            const invoicesToDisplay = showAllInvoices ? (p.invoices || []) : (p.invoices || []).filter(inv => inv.status === 'Raised' || inv.status === 'Pending');
+            const invoiceDetailsHtml = invoicesToDisplay.length > 0 ? invoicesToDisplay.map(inv => `<div class="invoice-row status-${(inv.status || '').toLowerCase()}"><span><b>${inv.no}</b></span><span>${inv.date}</span><span style="font-weight:bold; text-align:right;">${formatCurrency(parseFloat(inv.amount || 0))}</span><span>(${inv.status})</span></div>`).join('') : (showAllInvoices ? 'No invoices' : 'No pending invoices');
+
+            row.innerHTML = `
+                <td>${p.jobNo}</td><td>${p.clientName}<br><small>${p.clientMobile||''}</small></td><td>${p.plotNo}<br><small>${p.agreementDate||''}</small></td>
+                <td>${statusHtml}</td><td>${docHtml}</td><td><div class="invoice-container">${invoiceDetailsHtml}</div></td><td>${actionsHtml}</td>`;
+        }
+    }
+
+    async function updateDashboardSummary(projects) {
+        let totalPendingAmount = 0, pendingInvoiceCount = 0, totalOnHoldAmount = 0, lastPaidInvoice = null;
+        projects.forEach(p => {
+            (p.invoices || []).forEach(inv => {
+                const amount = parseFloat(inv.amount || 0);
+                if (inv.status === 'Raised' || inv.status === 'Pending') {
+                    pendingInvoiceCount++;
+                    totalPendingAmount += amount;
+                } else if (inv.status === 'Paid' && inv.date) {
+                    if (!lastPaidInvoice || new Date(inv.date) > new Date(lastPaidInvoice.date)) {
+                        lastPaidInvoice = inv;
+                    }
+                } else if (inv.status === 'On Hold') {
+                    totalOnHoldAmount += amount;
+                }
+            });
+        });
+
+        DOMElements['pending-invoices-count'].textContent = pendingInvoiceCount;
+        DOMElements['pending-invoices-amount'].textContent = `AED ${formatCurrency(totalPendingAmount)}`;
+        DOMElements['last-paid-amount'].textContent = lastPaidInvoice ? `AED ${formatCurrency(lastPaidInvoice.amount)}` : 'N/A';
+        DOMElements['on-hold-amount'].textContent = `AED ${formatCurrency(totalOnHoldAmount)}`;
+        const allMasterFiles = (await DB.getAllFiles()).filter(f => f.source === 'master');
+        
+        const expiringDocs = allMasterFiles.filter(file => {
+            if (!file.expiryDate) return false;
+            const expiry = new Date(file.expiryDate);
+            const now = new Date();
+            const thirtyDaysFromNow = new Date();
+            thirtyDaysFromNow.setDate(now.getDate() + 30);
+            return expiry >= now && expiry <= thirtyDaysFromNow;
+        });
+
+        DOMElements['expiring-documents-count'].textContent = expiringDocs.length;
+    }
+
+    async function showPendingInvoicesModal() {
+        const allProjects = await DB.getAllProjects();
+        const pendingInvoices = [];
+        allProjects.forEach(p => {
+            (p.invoices || []).forEach(inv => {
+                if (inv.status === 'Raised' || inv.status === 'Pending') {
+                    pendingInvoices.push({ ...inv, jobNo: p.jobNo, clientName: p.clientName, projectDescription: p.projectDescription });
+                }
+            });
+        });
+        const listEl = DOMElements['pending-invoice-list'];
+        if (pendingInvoices.length === 0) {
+            listEl.innerHTML = '<p>No pending invoices found.</p>';
+        } else {
+            let tableHtml = `<table class="output-table"><thead><tr><th>Inv No.</th><th>Project</th><th>Client</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead><tbody>`;
+            pendingInvoices.sort((a, b) => new Date(b.date) - new Date(a.date));
+            for (const inv of pendingInvoices) {
+                tableHtml += `<tr>
+                    <td>${inv.no}</td>
+                    <td>${inv.projectDescription || inv.jobNo}</td>
+                    <td>${inv.clientName}</td>
+                    <td>${new Date(inv.date).toLocaleDateString('en-CA')}</td>
+                    <td style="text-align:right;">${formatCurrency(inv.amount)}</td>
+                    <td><span class="status-${inv.status.toLowerCase()}">${inv.status}</span></td>
+                </tr>`;
+            }
+            tableHtml += '</tbody></table>';
+            listEl.innerHTML = tableHtml;
+        }
+        DOMElements['pending-invoice-modal'].style.display = 'flex';
+    }
+
+    async function showExpiringDocumentsModal() {
+        const allProjects = await DB.getAllProjects();
+        const allFiles = [];
+        for (const project of allProjects) {
+            const masterFiles = await DB.getFiles(project.jobNo, 'master');
+            masterFiles.forEach(f => allFiles.push({ ...f, projectName: project.projectDescription || project.jobNo }));
+        }
+        
+        const expiringDocs = allFiles.filter(file => {
+            if (!file.expiryDate) return false;
+            const expiry = new Date(file.expiryDate);
+            const now = new Date();
+            const thirtyDaysFromNow = new Date();
+            thirtyDaysFromNow.setDate(now.getDate() + 30);
+            return expiry >= now && expiry <= thirtyDaysFromNow;
+        });
+
+        const listEl = DOMElements['expiring-documents-list'];
+        if (expiringDocs.length === 0) {
+            listEl.innerHTML = '<p>No documents are expiring in the next 30 days.</p>';
+        } else {
+            let tableHtml = `<table class="output-table"><thead><tr><th>Document</th><th>Sub-Category</th><th>Project</th><th>Job No</th><th>Expiry Date</th><th>Days Left</th></tr></thead><tbody>`;
+            expiringDocs.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+            const now = new Date();
+            for (const doc of expiringDocs) {
+                const expiry = new Date(doc.expiryDate);
+                const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+                const daysLeftClass = daysLeft <= 7 ? 'danger' : (daysLeft <= 15 ? 'warning' : '');
+                tableHtml += `<tr>
+                    <td>${doc.name}</td>
+                    <td>${(doc.subCategory || '').replace(/_/g, ' ')}</td>
+                    <td>${doc.projectName}</td>
+                    <td>${doc.jobNo}</td>
+                    <td>${new Date(doc.expiryDate).toLocaleDateString('en-CA')}</td>
+                    <td class="${daysLeftClass}">${daysLeft}</td>
+                </tr>`;
+            }
+            tableHtml += '</tbody></table>';
+            listEl.innerHTML = tableHtml;
+        }
+        DOMElements['expiring-documents-modal'].style.display = 'flex';
+    }
+
+    // --- =============================== ---
+    // --- HR & OFFICE MGMT. FUNCTIONS ---
+    // --- =============================== ---
+
+    async function loadHRModuleContent() {
+        // This function dynamically creates the complete HTML for all HR view tabs.
+        // This prevents "cannot set innerHTML of null" errors by ensuring elements exist before they are accessed.
+        
+        // Analytics Tab
+        DOMElements['analytics-tab'].innerHTML = `<div class="tool-card"><h3>Business Intelligence Overview</h3><div class="dashboard-summary-container" id="analytics-summary-container" style="justify-content: space-around;"></div><div style="height:400px; margin-top:30px;"><canvas id="analyticsChart"></canvas></div></div>`;
+
+        // Staff List & Salaries
+        DOMElements['staff-list-tab'].innerHTML = `<div class="tool-card"><h3><span>Staff & Salary Overview</span><button id="add-staff-btn" class="primary-button">+ Add Staff</button></h3><div class="table-container"><table class="output-table"><thead><tr><th>Name</th><th>Role</th><th>Join Date</th><th style="text-align:right;">Gross Salary</th><th style="text-align:right;">Est. Gratuity</th><th>Actions</th></tr></thead><tbody id="staff-list-body"></tbody></table></div></div>`;
+
+        // HR Letter Generation
+        DOMElements['hr-letter-generation-tab'].innerHTML = `<div class="hr-layout"><div class="form-card"><h3>Generate HR Letter</h3><div class="input-group"><label for="hr-letter-type-select">Type of Letter</label><select id="hr-letter-type-select"><option value="">-- Select --</option><option value="salary_certificate">Salary Certificate</option><option value="appreciation">Appreciation</option><option value="warning">Warning</option></select></div><div class="input-group"><label for="letter-staff-select">Select Staff</label><select id="letter-staff-select"></select></div><div id="dynamic-letter-fields"></div><button id="generate-hr-letter-preview-btn" class="primary-button" style="width:100%; margin-top: 20px;">Generate Preview</button></div><div class="tool-card"><h3><span>Letter Preview</span><button id="download-hr-letter-pdf-btn" class="secondary-button" style="display:none;">Download PDF</button></h3><div id="hr-letter-preview" class="letter-preview"><p style="text-align:center;color:#888;">Select a letter type to generate a preview.</p></div></div></div>`;
+
+        // Reminders
+        DOMElements['reminders-tab'].innerHTML = `<div class="tool-card"><h3>Upcoming Expirations & Due Dates (Next 60 Days)</h3><div id="reminder-list"></div></div>`;
+
+        // Offer Letters
+        DOMElements['offer-letters-tab'].innerHTML = `<div class="hr-layout"><div class="form-card"><h3>Create Offer Letter</h3><div class="input-group"><label>Candidate Name</label><input type="text" id="candidateName"></div><div class="input-group"><label>Position Offered</label><input type="text" id="candidateRole"></div><div class="input-group"><label>Offered Gross Salary</label><input type="number" id="offeredSalary"></div><div class="input-group"><label>Intended Join Date</label><input type="date" id="joinDate"></div><button id="generate-offer-letter-btn" class="primary-button" style="width:100%; margin-top: 20px;">Generate Preview</button></div><div class="tool-card"><h3>Offer Letter Preview</h3><div id="offer-letter-preview" class="letter-preview"></div></div></div>`;
+
+        // Annual Leaves
+        DOMElements['leave-management-tab'].innerHTML = `<div class="tool-card"><h3>Log New Leave</h3><div class="input-group-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items:flex-end; gap:15px;"><div class="input-group"><label>Staff Member</label><select id="leaveStaffSelect"></select></div><div class="input-group"><label>Leave Type</label><select id="leaveType"><option>Annual</option><option>Sick</option><option>Unpaid</option><option>Emergency</option></select></div><div class="input-group"><label>Start Date</label><input type="date" id="leaveStartDate"></div><div class="input-group"><label>End Date</label><input type="date" id="leaveEndDate"></div><button id="add-leave-btn" class="primary-button">Log Leave</button></div></div><div class="tool-card"><h3>Leave History</h3><table class="output-table"><thead><tr><th>Staff</th><th>Type</th><th>Start Date</th><th>End Date</th><th>Days</th><th>Balance Left</th></tr></thead><tbody id="leave-log-body"></tbody></table></div>`;
+
+        // Office Expense Log
+        DOMElements['expense-log-tab'].innerHTML = `<div class="hr-layout" style="grid-template-columns: 1fr 1.5fr;"><div class="tool-card"><h3 style="margin-bottom: 15px;">Log New Expense</h3><div class="form-card"><div class="input-group"><label>Date</label><input type="date" id="expenseDate"></div><div class="input-group"><label>Category</label><select id="expenseCategory"><option>Office Supplies</option><option>Utilities</option><option>Marketing</option><option>Transportation</option><option>Miscellaneous</option></select></div><div class="input-group"><label>Description</label><input type="text" id="expenseDescription"></div><div class="input-group"><label>Amount</label><input type="number" id="expenseAmount"></div><button id="add-expense-btn" class="primary-button" style="width:100%;margin-top:10px;">Add Expense</button></div></div><div class="tool-card"><h3>Expense History</h3><div id="expense-filter-container" class="tabs" style="margin-bottom:15px;"><button class="secondary-button active" data-period="1">Last Month</button><button class="secondary-button" data-period="3">Last 3 Months</button><button class="secondary-button" data-period="6">Last 6 Months</button></div><div style="height:250px; margin-bottom:20px;"><canvas id="expenseChart"></canvas></div><table class="output-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th style="text-align:right;">Amount</th></tr></thead><tbody id="expense-log-body"></tbody></table></div></div>`;
+        
+        // Annual Expenses
+        DOMElements['annual-expenses-tab'].innerHTML = `<div class="tool-card"><h3>Add New Annual Expense</h3><div class="input-group-grid" style="grid-template-columns: 2fr 1fr 1fr auto; align-items:flex-end; gap:15px;"><div class="input-group"><label>Expense Item (e.g., Trade License)</label><input type="text" id="annualExpenseItem"></div><div class="input-group"><label>Amount (AED)</label><input type="number" id="annualExpenseAmount"></div><div class="input-group"><label>Next Due Date</label><input type="date" id="annualExpenseDueDate"></div><button id="add-annual-expense-btn" class="primary-button">Add Annual Expense</button></div></div><div class="tool-card"><h3>Tracked Annual Expenses</h3><table class="output-table"><thead><tr><th>Item</th><th style="text-align:right;">Amount</th><th>Next Due Date</th><th>Action</th></tr></thead><tbody id="annual-expense-body"></tbody></table></div>`;
+
+        // Staff Increments
+        DOMElements['increments-tab'].innerHTML = `<div class="tool-card"><h3>Record New Increment</h3><div class="input-group-grid" style="grid-template-columns: 2fr 1fr 1fr auto; align-items:flex-end; gap:15px;"><div class="input-group"><label>Staff Member</label><select id="incrementStaffSelect"></select></div><div class="input-group"><label>Increment Amount (AED)</label><input type="number" id="incrementAmount"></div><div class="input-group"><label>Effective Date</label><input type="date" id="incrementDate"></div><button id="add-increment-btn" class="primary-button">Record Increment</button></div></div><div class="tool-card"><h3>Increment History</h3><table class="output-table"><thead><tr><th>Staff</th><th>Date</th><th style="text-align:right;">Old Salary</th><th style="text-align:right;">Increment</th><th style="text-align:right;">New Salary</th></tr></thead><tbody id="increment-log-body"></tbody></table></div>`;
+
+        // Staff Modal Body
+        DOMElements['staff-modal-body'].innerHTML = `<div class="hr-layout"><div class="form-card"><img id="staff-photo-preview" src="placeholder.jpg" alt="Staff Photo" class="staff-photo-preview"/><div class="input-group"><label>Update Photo</label><input type="file" id="staff-photo-upload" accept="image/*"></div><div class="input-group"><label>Update Passport</label><input type="file" id="staff-passport-upload" accept="image/*,application/pdf"><a id="staff-passport-link" href="#" target="_blank" style="display:none;">View Current</a></div></div><div><div class="input-group-grid" style="grid-template-columns:1fr 1fr;"><div class="input-group"><label>Name</label><input type="text" id="modal-staff-name"></div><div class="input-group"><label>Role</label><input type="text" id="modal-staff-role"></div><div class="input-group"><label>Email</label><input type="email" id="modal-staff-email"></div><div class="input-group"><label>Date of Birth</label><input type="date" id="modal-staff-dob"></div><div class="input-group"><label>Phone No.</label><input type="text" id="modal-staff-phone"></div><div class="input-group"><label>Emirates ID</label><input type="text" id="modal-staff-eid"></div><div class="input-group"><label>Join Date</label><input type="date" id="modal-staff-join-date"></div><div class="input-group"><label>Gross Salary</label><input type="number" id="modal-staff-salary"><span id="modal-basic-salary" class="basic-salary-display"></span></div></div><div class="input-group"><label>Address</label><textarea id="modal-staff-address" rows="2"></textarea></div><div class="input-group-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;"><div class="input-group"><label>Visa Expiry</label><input type="date" id="modal-visa-expiry"></div><div class="input-group"><label>S.O.E. Expiry</label><input type="date" id="modal-soe-expiry"></div><div class="input-group"><label>License Expiry</label><input type="date" id="modal-license-expiry"></div><div class="input-group"><label>Health Card Expiry</label><input type="date" id="modal-health-expiry"></div></div></div></div><hr><h4>Staff Loans</h4><div class="input-group-grid" style="grid-template-columns:1fr 1fr 2fr auto;align-items:flex-end;"><div class="input-group"><label>Loan Amount</label><input type="number" id="modal-loan-amount"></div><div class="input-group"><label>Date</label><input type="date" id="modal-loan-date"></div><div class="input-group"><label>Description</label><input type="text" id="modal-loan-description"></div><button id="add-loan-btn" class="secondary-button">Add Loan</button></div><table class="output-table"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody id="modal-loan-history"></tbody></table><div style="text-align:right; margin-top:20px;"><button id="delete-staff-btn" class="danger-button" style="display:none;float:left;">Delete Staff Member</button><button id="save-staff-details-btn" class="primary-button">Save Changes</button></div>`;
+
+        // Re-cache all elements, including the ones just created.
+        cacheDOMElements();
+    }
+	
+	 async function refreshHRDataAndRender() {
+        staffList = await DB.getAllHRData() || [];
+        officeExpenses = await DB.getOfficeExpenses() || [];
+        
+        if (staffList.length === 0 && (await DB.getAllHRData()).length === 0) { 
+            console.log("HR_DATA store is empty. Seeding initial staff data...");
+            const initialStaff = [{ name: 'Faisal M.', role: 'Architect', joinDate: '2022-01-15', grossSalary: 13000, leaveBalance: 30, loans: [] }, { name: 'Adnan K.', role: 'Architect', joinDate: '2022-02-01', grossSalary: 13000, leaveBalance: 30, loans: [] }];
+            for (const staff of initialStaff) { await DB.addHRData(staff); }
+            staffList = await DB.getAllHRData();
+        }
+
+        renderStaffList();
+        renderReminders();
+        populateHRSelects();
+        renderLeaveLog();
+        renderIncrementLog();
+        renderAnnualExpenseList();
+        renderExpenseLog(1); 
+        renderAnalyticsTab(); // Render the new analytics tab
+    }
+    
+    // ... (All other HR functions from hr_management - Copy.js go here, unchanged) ...
+    
+    // --- ============================ ---
+    // --- BUSINESS ANALYTICS FUNCTIONS ---
+    // --- ============================ ---
+    async function renderAnalyticsTab() {
+        // 1. Fetch all necessary data
+        const allProjects = await DB.getAllProjects();
+        const allExpenses = await DB.getOfficeExpenses();
+        const allStaff = await DB.getAllHRData();
+
+        // 2. Process data by month for the last 12 months
+        const monthlyData = {};
+        const monthLabels = [];
+        const now = new Date();
+
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+            monthLabels.push(date.toLocaleString('default', { month: 'short', year: 'numeric' }));
+            monthlyData[key] = { revenue: 0, expenses: 0, salaries: 0, net: 0 };
+        }
+
+        // 3. Calculate Monthly Revenue from paid invoices
+        allProjects.forEach(p => {
+            (p.invoices || []).forEach(inv => {
+                if (inv.status === 'Paid' && inv.date) {
+                    const invDate = new Date(inv.date);
+                    const key = `${invDate.getFullYear()}-${String(invDate.getMonth() + 1).padStart(2, '0')}`;
+                    if (monthlyData[key]) {
+                        monthlyData[key].revenue += parseFloat(inv.amount || 0);
+                    }
+                }
+            });
+        });
+
+        // 4. Calculate Monthly Expenses
+        const totalMonthlySalary = allStaff.reduce((sum, staff) => sum + (staff.grossSalary || 0), 0);
+        Object.keys(monthlyData).forEach(key => {
+            monthlyData[key].salaries = totalMonthlySalary;
+        });
+
+        allExpenses.forEach(exp => {
+            const expDate = new Date(exp.date);
+            const key = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, '0')}`;
+            if (monthlyData[key]) {
+                if (exp.frequency === 'annual') {
+                    monthlyData[key].expenses += (parseFloat(exp.amount || 0) / 12);
+                } else {
+                    monthlyData[key].expenses += parseFloat(exp.amount || 0);
+                }
+            }
+        });
+
+        // 5. Calculate Totals and Net
+        let totalRevenue = 0;
+        let totalCosts = 0;
+        const revenueValues = [];
+        const costValues = [];
+        const netValues = [];
+
+        Object.keys(monthlyData).forEach(key => {
+            const month = monthlyData[key];
+            const totalMonthCost = month.expenses + month.salaries;
+            month.net = month.revenue - totalMonthCost;
+
+            totalRevenue += month.revenue;
+            totalCosts += totalMonthCost;
+
+            revenueValues.push(month.revenue);
+            costValues.push(totalMonthCost);
+            netValues.push(month.net);
+        });
+        const netProfit = totalRevenue - totalCosts;
+
+        // 6. Render Summary Cards
+        DOMElements['analytics-summary-container'].innerHTML = `
+            <div class="summary-item"><div class="label">Total Revenue (12 Mo)</div><div class="value">${formatCurrency(totalRevenue)}</div></div>
+            <div class="summary-item"><div class="label">Total Costs (12 Mo)</div><div class="value">${formatCurrency(totalCosts)}</div></div>
+            <div class="summary-item" style="background-color: ${netProfit < 0 ? '#ffebee' : '#e8f5e9'};"><div class="label">Net Profit (12 Mo)</div><div class="value" style="color: ${netProfit < 0 ? '#c62828' : '#2e7d32'};">${formatCurrency(netProfit)}</div></div>
+        `;
+
+        // 7. Render Chart
+        const ctx = DOMElements.analyticsChart?.getContext('2d');
+        if (!ctx) return;
+        if (analyticsChart) analyticsChart.destroy();
+        
+        analyticsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [
+                    {
+                        label: 'Revenue',
+                        data: revenueValues,
+                        backgroundColor: '#4CAF50',
+                    },
+                    {
+                        label: 'Total Costs (Expenses + Salaries)',
+                        data: costValues,
+                        backgroundColor: '#F44336',
+                    },
+                    {
+                        label: 'Net Profit',
+                        data: netValues,
+                        backgroundColor: '#2196F3',
+                        type: 'line',
+                        borderColor: '#2196F3',
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, ticks: { callback: (value) => formatCurrency(value) } } },
+                plugins: { title: { display: true, text: 'Monthly Revenue vs. Costs (Last 12 Months)' } }
+            }
+        });
+    }
+
+    // --- ========================== ---
+    // --- INITIALIZATION & LISTENERS ---
+    // --- ========================== ---
+
+    function setupEventListeners() {
+        // --- Main Navigation & Dashboard Controls ---
+        DOMElements['office-management-btn']?.addEventListener('click', showOfficeView);
+        DOMElements['back-to-main-dashboard-btn']?.addEventListener('click', showDashboard);
+        DOMElements['load-from-file-btn']?.addEventListener('click', () => DOMElements['xml-file-input']?.click());
+        DOMElements['xml-file-input']?.addEventListener('change', handleProjectFileImport);
+        DOMElements['load-site-update-btn']?.addEventListener('click', () => DOMElements['site-update-file-input']?.click());
+        DOMElements['site-update-file-input']?.addEventListener('change', handleSiteUpdateImport);
+        DOMElements['save-to-file-btn']?.addEventListener('click', handleFileExport);
+        DOMElements['new-project-btn']?.addEventListener('click', handleNewProject);
+        DOMElements['search-box']?.addEventListener('input', renderDashboard);
+
+        DOMElements['toggle-invoices-btn']?.addEventListener('click', () => {
+            showAllInvoices = !showAllInvoices;
+            const btn = DOMElements['toggle-invoices-btn'];
+            if (btn) btn.textContent = showAllInvoices ? 'Show Pending Invoices' : 'Show All Invoices';
+            renderDashboard();
+        });
+
+        // --- Event Delegation for Project List ---
+        DOMElements['project-list-body']?.addEventListener('click', (e) => {
+            const row = e.target.closest('tr');
+            if (!row?.dataset?.jobNo) return;
+            if (e.target.matches('.edit-btn')) handleEditProject(row.dataset.jobNo);
+            if (e.target.matches('.view-site-files-btn')) showSiteFilesModal(row.dataset.jobNo);
+        });
+
+        // --- Modals and Summaries ---
+        DOMElements['pending-invoices-summary']?.addEventListener('click', showPendingInvoicesModal);
+        DOMElements['expiring-documents-summary']?.addEventListener('click', showExpiringDocumentsModal);
+        DOMElements['pending-modal-close-btn']?.addEventListener('click', () => DOMElements['pending-invoice-modal'].style.display = 'none');
+        DOMElements['expiring-modal-close-btn']?.addEventListener('click', () => DOMElements['expiring-documents-modal'].style.display = 'none');
+        DOMElements['site-files-modal-close-btn']?.addEventListener('click', () => DOMElements['site-files-modal'].style.display = 'none');
+        
+        // --- Project Editor View ---
+        DOMElements['back-to-dashboard-btn']?.addEventListener('click', showDashboard);
+        DOMElements['save-project-btn']?.addEventListener('click', saveCurrentProject);
+        DOMElements.controlTabs?.addEventListener('click', handleTabSwitch);
+        DOMElements.previewTabs?.addEventListener('click', handleTabSwitch);
+        DOMElements['generate-pdf-btn']?.addEventListener('click', handleGeneratePdf);
+        DOMElements['documents-tab']?.addEventListener('click', handleMasterDocumentUpload);
+        DOMElements['payment-cert-tab']?.addEventListener('click', handlePaymentCertActions);
+        
+        // ... (Event listeners for project fees, invoicing, tools) ...
+
+        // --- HR & Office Management View (Event Delegation on Parent View)---
+        const officeView = DOMElements['office-view'];
+        if (officeView) {
+            officeView.addEventListener('click', (e) => {
+                if (e.target.matches('#back-to-main-dashboard-btn')) showDashboard();
+                if (e.target.matches('.tab-button') && e.target.closest('#hr-tabs')) handleHRTabSwitch(e);
+                if (e.target.matches('#add-staff-btn')) showStaffDetailsModal();
+                if (e.target.matches('.details-btn') && e.target.closest('#staff-list-body')) showStaffDetailsModal(parseInt(e.target.dataset.id));
+                if (e.target.matches('#generate-hr-letter-preview-btn')) renderHRLetterPreview();
+                if (e.target.matches('#download-hr-letter-pdf-btn')) downloadHRLetterAsPDF();
+                if (e.target.matches('#generate-offer-letter-btn')) renderOfferLetterPreview();
+                if (e.target.matches('#add-leave-btn')) handleAddLeave();
+                if (e.target.matches('#add-expense-btn')) handleAddExpense();
+                if (e.target.matches('#add-annual-expense-btn')) handleAddAnnualExpense();
+                if (e.target.matches('#add-increment-btn')) handleAddIncrement();
+                if (e.target.matches('#expense-filter-container .secondary-button')) handleExpenseFilter(e);
+            });
+        }
+
+        // --- HR Staff Modal (Event Delegation on Modal Parent) ---
+        const staffModal = DOMElements['staff-details-modal'];
+        if (staffModal) {
+            staffModal.addEventListener('click', (e) => {
+                if (e.target.matches('#save-staff-details-btn')) handleStaffDetailsSave();
+                if (e.target.matches('#delete-staff-btn')) handleDeleteStaff();
+                if (e.target.matches('.loan-status-btn')) handleLoanActions(e);
+                if (e.target.matches('#add-loan-btn')) handleAddLoan();
+                if (e.target.matches('#staff-details-modal-close-btn')) staffModal.style.display = 'none';
+            });
+        }
+    }
+
+    function cacheDOMElements() {
+        const ids = [
+            // Main App
+            'app-container', 'dashboard-view', 'project-view', 'office-view', 'resizer',
+            // Main Dashboard
+            'new-project-btn', 'search-box', 'project-list-body', 'load-from-file-btn', 'save-to-file-btn', 
+            'xml-file-input', 'load-site-update-btn', 'site-update-file-input', 'toggle-invoices-btn',
+            // Dashboard Summaries
+            'pending-invoices-summary', 'pending-invoices-count', 'pending-invoices-amount', 'last-paid-amount', 'on-hold-amount',
+            'expiring-documents-summary', 'expiring-documents-count',
+            // Project View
+            'back-to-dashboard-btn', 'save-project-btn', 'project-view-title', 'page-size-selector', 'generate-pdf-btn',
+            // Project Tabs
+            'main-tab', 'scope-tab', 'fees-tab', 'invoicing-tab', 'documents-tab', 'payment-cert-tab', 'tools-tab', 'project-letters-tab',
+            // Previews
+            'brief-proposal-preview', 'full-agreement-preview', 'assignment-order-preview', 'tax-invoice-preview', 
+            'payment-certificate-preview', 'project-letter-preview', 'proforma-preview', 'receipt-preview',
+            // HR View
+            'hr-tabs', 'analytics-tab', 'analytics-summary-container', 'analyticsChart',
+            // HR Tabs
+            'staff-list-tab', 'hr-letter-generation-tab', 'reminders-tab', 'offer-letters-tab',
+            'leave-management-tab', 'expense-log-tab', 'annual-expenses-tab', 'increments-tab',
+            // All other element IDs from both modules...
+            'jobNo', 'agreementDate', 'projectStatus', 'clientName', 'clientMobile', 'clientEmail', 'clientPOBox', 'clientTrn',
+            'projectDescription', 'plotNo', 'area', 'scopeOfWorkType', 'otherScopeType', 'otherScopeTypeContainer',
+            'authority', 'otherAuthority', 'otherAuthorityContainer', 'projectType', 'builtUpArea',
+            'scope-selection-container', 'vatRate', 'remuneration-type-selector', 'lump-sum-group', 'lumpSumFee', 'percentage-group', 'constructionCostRate',
+            'total-construction-cost-display', 'consultancyFeePercentage', 'designFeeSplit', 'supervisionFeeSplitDisplay',
+            'financial-summary-container', 'fee-milestone-group', 'supervision-billing-method-selector', 'prorata-percentage-group',
+            'prorataPercentage', 'designDuration', 'constructionDuration', 'extendedSupervisionFee', 'notes-group',
+            'invoice-history-body', 'newInvoiceNo', 'milestone-billing-container', 'milestone-billing-body',
+            'supervision-billing-monthly-container', 'supervision-monthly-info', 'bill-next-month-btn',
+            'supervision-billing-progress-container', 'supervision-progress-info', 'projectProgressInput', 'bill-by-progress-btn',
+            'supervision-billing-extended-container', 'extended-supervision-info', 'bill-extended-month-btn',
+            'current-invoice-items-container', 'current-invoice-items-body', 'raise-invoice-btn',
+            'payment-cert-no', 'generate-new-cert-btn', 'cert-history-body', 'calculateResourcesBtn', 'resourcePredictionOutput', 'generateQrCodeBtn', 'qr-code',
+            'add-staff-btn', 'staff-list-body', 'hr-letter-type-select', 'letter-staff-select', 'dynamic-letter-fields', 'generate-hr-letter-preview-btn',
+            'hr-letter-preview', 'download-hr-letter-pdf-btn', 'reminder-list', 'candidateName', 'candidateRole', 'offeredSalary', 'joinDate', 'generate-offer-letter-btn', 'offer-letter-preview',
+            'leaveStaffSelect', 'leaveType', 'leaveStartDate', 'leaveEndDate', 'add-leave-btn', 'leave-log-body', 'expenseDate', 'expenseCategory', 'expenseDescription', 'expenseAmount', 'add-expense-btn', 
+            'expense-filter-container', 'expenseChart', 'expense-log-body', 'annualExpenseItem', 'annualExpenseAmount', 'annualExpenseDueDate', 'add-annual-expense-btn', 'annual-expense-body',
+            'incrementStaffSelect', 'incrementAmount', 'incrementDate', 'add-increment-btn', 'increment-log-body',
+            // Modals
+            'pending-invoice-modal', 'pending-modal-close-btn', 'pending-invoice-list', 'expiring-documents-modal', 'expiring-modal-close-btn', 'expiring-documents-list',
+            'site-files-modal', 'site-files-modal-close-btn', 'site-files-modal-title', 'site-photos-gallery', 'site-docs-gallery',
+            'file-preview-modal', 'file-modal-close', 'file-preview-container', 'staff-details-modal', 'staff-details-modal-close-btn', 'staff-modal-title', 'staff-modal-body',
+            // Staff Modal Fields
+            'staff-photo-preview', 'staff-photo-upload', 'staff-passport-upload', 'staff-passport-link',
+            'modal-staff-name', 'modal-staff-role', 'modal-staff-email', 'modal-staff-dob', 'modal-staff-phone',
+            'modal-staff-eid', 'modal-staff-join-date', 'modal-staff-salary', 'modal-basic-salary', 'modal-staff-address',
+            'modal-visa-expiry', 'modal-soe-expiry', 'modal-license-expiry', 'modal-health-expiry',
+            'modal-loan-amount', 'modal-loan-date', 'modal-loan-description', 'add-loan-btn', 'modal-loan-history',
+            'delete-staff-btn', 'save-staff-details-btn'
+        ];
+        ids.forEach(id => {
+            // FIX: Store elements using their direct ID as the key
+            DOMElements[id] = document.getElementById(id);
+        });
+        // Query for elements that might not have an ID or are classes
+        DOMElements.controlTabs = document.querySelector('.control-tabs');
+        DOMElements.previewTabs = document.querySelector('.preview-tabs');
+    }
+    
+    async function handlePaymentCertActions(e) {
+        if (!currentProjectJobNo) return;
+        
+        if (e.target.matches('#generate-new-cert-btn')) {
+            const certNo = DOMElements['payment-cert-no'].value;
+            if (!certNo) {
+                alert('Please provide a Certificate Number.');
+                return;
+            }
+            await generateAndSavePaymentCertificate(certNo);
+        } else if (e.target.matches('.view-cert-btn')) {
+            const index = e.target.dataset.index;
+            const siteData = await DB.getSiteData(currentProjectJobNo);
+            const certData = siteData.paymentCertificates[index];
+            if (certData) {
+                await renderPaymentCertificatePreview(certData);
+                DOMElements.previewTabs.querySelector(`[data-tab="payment-certificate-preview"]`).click();
+            }
+        }
+    }
+    
+    async function handleEditProject(jobNo) {
+        currentProjectJobNo = jobNo;
+        const project = await DB.getProject(jobNo);
+        if (project) {
+            populateFormWithData(project);
+            DOMElements['project-view-title'].textContent = `Editing Project: ${jobNo}`;
+            showProjectView();
+            await renderPaymentCertTab(project);
+            DOMElements['documents-tab'].querySelectorAll('.document-category').forEach(container => {
+                const category = container.querySelector('.upload-btn').dataset.category;
+                renderMasterFileGallery(container, jobNo, category);
+            });
+        }
+    }
+    async function handlePaymentCertActions(e) {
+        if (!currentProjectJobNo) return;
+        
+        if (e.target.matches('#generate-new-cert-btn')) {
+            const certNo = DOMElements['payment-cert-no'].value;
+            if (!certNo) {
+                alert('Please provide a Certificate Number.');
+                return;
+            }
+            await generateAndSavePaymentCertificate(certNo);
+        } else if (e.target.matches('.view-cert-btn')) {
+            const index = e.target.dataset.index;
+            const siteData = await DB.getSiteData(currentProjectJobNo);
+            const certData = siteData.paymentCertificates[index];
+            if (certData) {
+                await renderPaymentCertificatePreview(certData);
+                DOMElements.previewTabs.querySelector(`[data-tab="payment-certificate-preview"]`).click();
+            }
+        }
+    }
+    
+    function populateFormWithData(project) {
+        const stringFields = ['jobNo', 'agreementDate', 'projectStatus', 'clientName', 'clientMobile', 'clientEmail', 'clientPOBox', 'clientTrn', 'projectDescription', 'plotNo', 'area', 'projectType', 'designDuration', 'constructionDuration'];
+        const floatFields = ['builtUpArea', 'vatRate', 'lumpSumFee', 'constructionCostRate', 'consultancyFeePercentage', 'designFeeSplit', 'extendedSupervisionFee'];
+        stringFields.forEach(id => { if (DOMElements[id]) DOMElements[id].value = project[id] || ''; });
+        floatFields.forEach(id => { if (DOMElements[id]) DOMElements[id].value = project[id] || 0; });
+        
+        setSelectOrOther(DOMElements.authority, DOMElements.otherAuthority, project.authority, project.otherAuthority);
+        setSelectOrOther(DOMElements.scopeOfWorkType, DOMElements.otherScopeType, project.scopeOfWorkType, project.otherScopeType);
+        
+        document.querySelector(`input[name="remunerationType"][value="${project.remunerationType || 'percentage'}"]`).checked = true;
+        document.querySelector(`input[name="supervisionBillingMethod"][value="${project.supervisionBillingMethod || 'monthly'}"]`).checked = true;
+
+        for (const section in CONTENT.SCOPE_DEFINITIONS) { 
+            if (!/^[0-9\.]+$/.test(section)) continue; 
+            CONTENT.SCOPE_DEFINITIONS[section].forEach(item => { 
+                const cb = document.getElementById(`scope-${item.id}`); 
+                if (cb) cb.checked = project.scope?.[section]?.[item.id] || false; 
+            }); 
+        }
+        CONTENT.NOTES.forEach(item => { 
+            const cb = document.getElementById(item.id); 
+            if (cb) cb.checked = project.notes?.[item.id] || false; 
+        });
+        CONTENT.FEE_MILESTONES.forEach(item => { 
+            const input = document.getElementById(`fee-perc-${item.id}`); 
+            if (input) input.value = project.feeMilestonePercentages?.[item.id] ?? item.defaultPercentage; 
+        });
+
+        updateRemunerationView();
+        renderAllPreviews();
+        renderInvoicingTab(project);
+    }
+    async function renderMasterFileGallery(containerEl, jobNo, category) {
+        const galleryGrid = containerEl.querySelector('.gallery-grid');
+        galleryGrid.innerHTML = '<p>Loading files...</p>';
+        const allMasterFiles = await DB.getFiles(jobNo, 'master');
+        const files = allMasterFiles.filter(f => f.category === category);
+        
+        if (files.length === 0) {
+            galleryGrid.innerHTML = '<p>No documents uploaded in this category.</p>';
+            return;
+        }
+        
+        galleryGrid.innerHTML = '';
+        files.forEach(file => {
+            const thumbContainer = document.createElement('div');
+            thumbContainer.className = 'thumbnail-container';
+
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'thumbnail-delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.title = 'Delete this file';
+            deleteBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (confirm('Are you sure you want to delete this file?')) {
+                    await DB.deleteFile(file.id);
+                    renderMasterFileGallery(containerEl, jobNo, category);
+                }
+            };
+
+            let thumbnail;
+            if (file.fileType.startsWith('image/')) {
+                thumbnail = Object.assign(document.createElement('img'), { src: file.dataUrl, className: 'thumbnail' });
+            } else if (file.fileType === 'application/pdf') {
+                thumbnail = document.createElement('canvas');
+                thumbnail.className = 'thumbnail pdf-thumbnail';
+                PDFGenerator.renderPdfThumbnail(thumbnail, file.dataUrl);
+            } else {
+                thumbnail = Object.assign(document.createElement('div'), { className: 'file-icon', textContent: file.fileType.split('/')[1]?.toUpperCase() || 'FILE' });
+            }
+            
+            const caption = document.createElement('div');
+            caption.className = 'thumbnail-caption';
+            caption.textContent = file.name;
+            
+            thumbContainer.append(deleteBtn, thumbnail, caption);
+            galleryGrid.appendChild(thumbContainer);
+        });
+    }
+    async function renderPaymentCertificatePreview(certData) {
+        if (!certData) {
+             DOMElements['payment-certificate-preview'].innerHTML = `<div style="padding: 20px; text-align: center;">Generate or select a certificate to view its preview.</div>`;
+             return;
+        }
+        const project = await DB.getProject(currentProjectJobNo);
+        DOMElements['payment-certificate-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.paymentCertificate(certData, project);
+    }
+    
+     // --- Payment Certificate Functions ---
+    async function renderPaymentCertTab(project) {
+        if (!project) return;
+        const siteData = await DB.getSiteData(project.jobNo) || { paymentCertificates: [] };
+        const certs = siteData.paymentCertificates || [];
+
+        DOMElements['payment-cert-no'].value = `PC-${String(certs.length + 1).padStart(2, '0')}`;
+
+        const tbody = DOMElements['cert-history-body'];
+        tbody.innerHTML = '';
+        if (certs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No certificates issued yet.</td></tr>';
+        } else {
+            certs.forEach((cert, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${cert.certNo}</td>
+                    <td>${new Date(cert.date).toLocaleDateString('en-CA')}</td>
+                    <td>${formatCurrency(cert.netPayable)}</td>
+                    <td><button class="view-cert-btn secondary-button" data-index="${index}">View</button></td>
+                `;
+            });
+        }
+    }
+    function showProjectView() {
+        DOMElements['dashboard-view'].classList.remove('active');
+        DOMElements['project-view'].classList.add('active');
+		
+		 DOMElements['office-view'].classList.remove('active');
+    }
+    async function renderInvoiceDocuments(invoiceData) {
+        const project = await DB.getProject(currentProjectJobNo);
+        if (!project) return;
+        const allInvoices = project.invoices || [];
+
+        if (!invoiceData) {
+            const placeholder = `<div style="padding: 20px; text-align: center;">Select an invoice from the history to view its preview.</div>`;
+            DOMElements['proforma-preview'].innerHTML = placeholder;
+            DOMElements['tax-invoice-preview'].innerHTML = placeholder;
+            DOMElements['receipt-preview'].innerHTML = placeholder;
+            return;
+        }
+
+        DOMElements['proforma-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.genericInvoice(invoiceData, project, allInvoices, 'PROFORMA INVOICE', false);
+        DOMElements['tax-invoice-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.genericInvoice(invoiceData, project, allInvoices, 'TAX INVOICE', true);
+        DOMElements['receipt-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.receipt(invoiceData, project);
+    }
+    function updateSupervisionBillingView() {
+        const method = document.querySelector('input[name="supervisionBillingMethod"]:checked')?.value;
+        DOMElements['supervision-billing-monthly-container'].style.display = method === 'monthly' ? 'block' : 'none';
+        DOMElements['supervision-billing-progress-container'].style.display = method === 'progress' ? 'block' : 'none';
+        DOMElements['prorata-percentage-group'].style.display = method === 'progress' ? 'block' : 'none';
+    }
+    function renderInvoicingTab(project) {
+        if (!project) return;
+        DOMElements['current-invoice-items-body'].innerHTML = '';
+        const feeDistribution = getFeeDistribution(project);
+
+        const milestoneTbody = DOMElements['milestone-billing-body'];
+        milestoneTbody.innerHTML = '';
+        const billedMilestoneIds = new Set();
+        (project.invoices || []).forEach(inv => (inv.items || []).forEach(item => { if (item.type === 'milestone') billedMilestoneIds.add(item.id); }));
+
+        feeDistribution.fees.forEach(milestone => {
+            const row = milestoneTbody.insertRow();
+            const isBilled = billedMilestoneIds.has(milestone.id);
+            row.innerHTML = `
+                <td><input type="checkbox" id="cb-${milestone.id}" data-item-id="${milestone.id}" data-item-type="milestone" ${isBilled ? 'disabled' : ''}></td>
+                <td>${milestone.text} (${milestone.percentage}%)</td>
+                <td>${formatCurrency(milestone.amount)}</td>
+                <td><span class="status-${isBilled ? 'completed' : 'pending'}">${isBilled ? 'Billed' : 'Available'}</span></td>
+            `;
+        });
+
+        updateSupervisionBillingView();
+        const lastProgress = project.lastBilledProgress || 0;
+        const billedExtendedMonths = project.billedExtendedSupervisionMonths || 0;
+        const totalSupervisionFee = feeDistribution.supervisionFeePortion;
+        const billedAmount = totalSupervisionFee * (lastProgress / 100);
+        const remainingAmount = totalSupervisionFee - billedAmount;
+
+        DOMElements['supervision-progress-info'].innerHTML = `
+            <div class="progress-summary-line"><span>Total Supervision Fee:</span> <b>AED ${formatCurrency(totalSupervisionFee)}</b></div>
+            <div class="progress-summary-line"><span>Billed Progress (${lastProgress}%):</span> <b>AED ${formatCurrency(billedAmount)}</b></div>
+            <div class="progress-summary-line" style="border-top: 1px solid #ddd; margin-top: 4px; padding-top: 4px;"><span>Remaining Fee:</span> <b>AED ${formatCurrency(remainingAmount)}</b></div>`;
+        DOMElements.projectProgressInput.min = lastProgress + 0.1;
+        DOMElements['extended-supervision-info'].innerHTML = `<b>${billedExtendedMonths}</b> extended months billed.`;
+
+        const invoiceTbody = DOMElements['invoice-history-body'];
+        invoiceTbody.innerHTML = '';
+        (project.invoices || []).forEach((inv, index) => {
+            const row = invoiceTbody.insertRow();
+            row.dataset.invoiceIndex = index;
+            row.innerHTML = `<td><a href="#" class="view-invoice-link">${inv.no}</a></td><td>${inv.date}</td><td>${formatCurrency(inv.amount)}</td><td></td><td></td><td></td>`;
+            const statusSelect = document.createElement('select');
+            statusSelect.className = 'invoice-status-dropdown';
+            ['Raised', 'Paid', 'On Hold', 'Pending'].forEach(s => {
+                const option = document.createElement('option');
+                option.value = s; option.textContent = s; if (inv.status === s) option.selected = true;
+                statusSelect.appendChild(option);
+            });
+            row.cells[3].appendChild(statusSelect);
+            const detailsInput = document.createElement('input');
+            detailsInput.type = 'text'; detailsInput.className = 'invoice-details-input'; detailsInput.value = inv.paymentDetails || ''; detailsInput.placeholder = 'e.g., Bank Transfer';
+            row.cells[4].appendChild(detailsInput);
+            const chequeNoInput = document.createElement('input');
+            chequeNoInput.type = 'text'; chequeNoInput.className = 'cheque-details-input cheque-no-input'; chequeNoInput.style.marginBottom = '2px'; chequeNoInput.value = inv.chequeNo || ''; chequeNoInput.placeholder = 'Cheque No.';
+            const chequeDateInput = document.createElement('input');
+            chequeDateInput.type = 'date'; chequeDateInput.className = 'cheque-details-input cheque-date-input'; chequeDateInput.value = inv.chequeDate || '';
+            row.cells[5].append(chequeNoInput, chequeDateInput);
+        });
+
+        DOMElements.newInvoiceNo.value = `INV-${project.jobNo.split('/')[2]}-${String((project.invoices || []).length + 1).padStart(3, '0')}`;
+    }
+    function renderAllPreviews() {
+        if (!currentProjectJobNo) return;
+        DB.getProject(currentProjectJobNo).then(project => {
+            if (!project) return;
+            const uiData = getFormDataFromUI();
+            const fullData = { ...project, ...uiData };
+            const feeDistribution = getFeeDistribution(fullData);
+            DOMElements['brief-proposal-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.briefProposal(fullData, feeDistribution);
+            DOMElements['full-agreement-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.fullAgreement(fullData, feeDistribution);
+            DOMElements['assignment-order-preview'].innerHTML = PROJECT_DOCUMENT_TEMPLATES.assignmentOrder(fullData);
+            renderInvoiceDocuments(fullData.invoices?.[fullData.invoices.length - 1]);
+            renderPaymentCertificatePreview(null);
+        });
+    }
+    function getFormDataFromUI() {
+        const data = { scope: {}, notes: {}, feeMilestonePercentages: {} };
+        const stringFields = ['jobNo', 'agreementDate', 'projectStatus', 'clientName', 'clientMobile', 'clientEmail', 'clientPOBox', 'clientTrn', 'projectDescription', 'plotNo', 'area', 'scopeOfWorkType', 'projectType', 'designDuration', 'constructionDuration'];
+        const floatFields = ['builtUpArea', 'vatRate', 'lumpSumFee', 'constructionCostRate', 'consultancyFeePercentage', 'designFeeSplit', 'extendedSupervisionFee'];
+        stringFields.forEach(id => data[id] = DOMElements[id]?.value);
+        floatFields.forEach(id => data[id] = parseFloat(DOMElements[id]?.value) || 0);
+        data.otherAuthority = DOMElements.authority.value === 'Other' ? DOMElements.otherAuthority.value : '';
+        data.otherScopeType = DOMElements.scopeOfWorkType.value === 'Other' ? DOMElements.otherScopeType.value : '';
+        data.remunerationType = document.querySelector('input[name="remunerationType"]:checked').value;
+        data.supervisionBillingMethod = document.querySelector('input[name="supervisionBillingMethod"]:checked').value;
+        for (const section in CONTENT.SCOPE_DEFINITIONS) { 
+            if (!/^[0-9\.]+$/.test(section)) continue; 
+            data.scope[section] = {}; 
+            CONTENT.SCOPE_DEFINITIONS[section].forEach(item => { 
+                data.scope[section][item.id] = document.getElementById(`scope-${item.id}`)?.checked || false; 
+            }); 
+        }
+        CONTENT.NOTES.forEach(item => { data.notes[item.id] = document.getElementById(item.id)?.checked || false; });
+        CONTENT.FEE_MILESTONES.forEach(item => { data.feeMilestonePercentages[item.id] = parseFloat(document.getElementById(`fee-perc-${item.id}`)?.value) || 0; });
+        return data;
+    }
+    function getFeeDistribution(projectData) {
+        const data = projectData || getFormDataFromUI();
+        const totalConsultancyFee = (data.remunerationType === 'lumpSum') ?
+            (parseFloat(data.lumpSumFee) || 0) :
+            ((parseFloat(data.builtUpArea) || 0) * (parseFloat(data.constructionCostRate) || 0) * ((parseFloat(data.consultancyFeePercentage) || 0) / 100));
+        const designFeeSplit = parseFloat(data.designFeeSplit) || 0;
+        const designFeePortion = totalConsultancyFee * (designFeeSplit / 100);
+        const supervisionFeePortion = totalConsultancyFee * ((100 - designFeeSplit) / 100);
+        const constructionMonths = parseFloat(data.constructionDuration) || 1;
+        const monthlySupervisionFee = supervisionFeePortion / constructionMonths;
+        const feeBreakdown = [];
+        CONTENT.FEE_MILESTONES.forEach(item => {
+            const percentage = data.feeMilestonePercentages?.[item.id] !== undefined ? data.feeMilestonePercentages[item.id] : item.defaultPercentage;
+            if (percentage > 0) {
+                feeBreakdown.push({ id: item.id, text: item.text, percentage: percentage, amount: designFeePortion * (percentage / 100) });
+            }
+        });
+        return { totalConsultancyFee, designFeePortion, supervisionFeePortion, monthlySupervisionFee, fees: feeBreakdown };
+    }
+
+    function updateFinancialSummary() {
+        const area = parseFloat(DOMElements.builtUpArea.value) || 0;
+        const costRate = parseFloat(DOMElements.constructionCostRate.value) || 0;
+        DOMElements['total-construction-cost-display'].textContent = `AED ${formatCurrency(area * costRate)}`;
+        const distribution = getFeeDistribution();
+        DOMElements['financial-summary-container'].innerHTML = `
+            <div class="summary-line"><span>Total Consultancy Fee</span><span>AED ${formatCurrency(distribution.totalConsultancyFee)}</span></div>
+            <div class="summary-line"><span>- Design Fee Portion</span><span>AED ${formatCurrency(distribution.designFeePortion)}</span></div>
+            <div class="summary-line"><span>- Supervision Fee Portion</span><span>AED ${formatCurrency(distribution.supervisionFeePortion)}</span></div>
+            <div class="summary-line" style="font-size: 9pt; color: #666; padding-top: 5px;"><span>(Monthly Supervision Rate)</span><span>(AED ${formatCurrency(distribution.monthlySupervisionFee)}/month)</span></div>`;
+        if (currentProjectJobNo) {
+             DB.getProject(currentProjectJobNo).then(project => {
+                if (project) renderInvoicingTab(project);
+            });
+        }
+    }
+
+    function updateRemunerationView() {
+        const selectedType = document.querySelector('input[name="remunerationType"]:checked')?.value;
+        DOMElements['lump-sum-group'].style.display = (selectedType === 'lumpSum') ? 'block' : 'none';
+        DOMElements['percentage-group'].style.display = (selectedType === 'percentage') ? 'block' : 'none';
+        updateFinancialSummary();
+        renderAllPreviews();
+    }
+
+     // --- UI HELPER FUNCTIONS ---
+
+    function setSelectOrOther(selectEl, otherInputEl, value, otherValue) {
+        if (!selectEl || !otherInputEl) return;
+        const optionExists = Array.from(selectEl.options).some(opt => opt.value === value);
+        if (optionExists && value) {
+            selectEl.value = value;
+            otherInputEl.value = '';
+            otherInputEl.parentElement.style.display = 'none';
+        } else {
+            selectEl.value = 'Other';
+            otherInputEl.value = value || otherValue || '';
+            otherInputEl.parentElement.style.display = 'block';
+        }
+    }
+
+    async function handleEditProject(jobNo) {
+        currentProjectJobNo = jobNo;
+        const project = await DB.getProject(jobNo);
+        if (project) {
+            populateFormWithData(project);
+            DOMElements['project-view-title'].textContent = `Editing Project: ${jobNo}`;
+            showProjectView();
+            await renderPaymentCertTab(project);
+            DOMElements['documents-tab'].querySelectorAll('.document-category').forEach(container => {
+                const category = container.querySelector('.upload-btn').dataset.category;
+                renderMasterFileGallery(container, jobNo, category);
+            });
+        }
+    }
+    async function handleMasterDocumentUpload(event) {
+        if (!event.target.matches('.upload-btn')) return;
+        if (!currentProjectJobNo) {
+            alert("Please save the project before uploading documents.");
+            return;
+        }
+
+        const container = event.target.closest('.document-category');
+        const fileInput = container.querySelector('.doc-file-input');
+        const subCategorySelect = container.querySelector('.doc-type-select');
+        const expiryInput = container.querySelector('.expiry-date-input');
+        const category = event.target.dataset.category;
+        const files = fileInput.files;
+
+        if (files.length === 0) { alert("Please select a file to upload."); return; }
+
+        for (const file of files) {
+            const dataUrl = await readFileAsDataURL(file);
+            await DB.addFile({
+                jobNo: currentProjectJobNo,
+                source: 'master',
+                category: category,
+                subCategory: subCategorySelect.value,
+                name: file.name,
+                fileType: file.type,
+                dataUrl: dataUrl,
+                expiryDate: expiryInput.value || null
+            });
+        }
+        
+        alert(`${files.length} file(s) uploaded successfully.`);
+        fileInput.value = '';
+        if(expiryInput) expiryInput.value = '';
+        renderMasterFileGallery(container, currentProjectJobNo, category);
+    }
+    // --- PDF Generation ---
+    async function handleGeneratePdf() {
+        if (!currentProjectJobNo) return;
+        
+        const activePreviewTab = DOMElements.previewTabs.querySelector('.tab-button.active');
+        if (!activePreviewTab) {
+            alert('Could not determine active preview tab.');
+            return;
+        }
+    }
+    // --- Tab Switching and Document Upload Handlers ---
+    function handleTabSwitch(event) {
+        if (!event.target.matches('.tab-button')) return;
+        
+        const button = event.target;
+        const tabsContainer = button.parentElement;
+        const tabId = button.dataset.tab;
+
+        tabsContainer.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+
+        const isControlTab = tabsContainer.classList.contains('control-tabs');
+        const contentSelector = isControlTab ? '.tab-content' : '.preview-tab-content';
+        const parentContainer = isControlTab ? DOMElements['project-view'].querySelector('.controls') : DOMElements['project-view'].querySelector('.preview-area');
+
+        parentContainer.querySelectorAll(contentSelector).forEach(panel => panel.classList.remove('active'));
+        
+        const activePanel = document.getElementById(tabId);
+        if (activePanel) {
+            activePanel.classList.add('active');
+        }
+    }
+    function showDashboard() {
+        currentProjectJobNo = null;
+        renderDashboard();
+        DOMElements['dashboard-view'].classList.add('active');
+        DOMElements['project-view'].classList.remove('active');
+		 DOMElements['office-view'].classList.remove('active');
+        renderDashboard();
+    }
+    async function handleNewProject() {
+        const allProjects = await DB.getAllProjects();
+        const nextId = allProjects.length > 0 ? Math.max(...allProjects.map(p => parseInt(p.jobNo.split('/').pop(), 10) || 0)) + 1 : 1;
+        const jobNo = `RRC/${new Date().getFullYear()}/${String(nextId).padStart(3, '0')}`;
+        
+        const newProject = { jobNo, agreementDate: new Date().toISOString().split('T')[0], scope: {}, notes: {}, invoices: [], remunerationType: 'percentage', vatRate: 5, designFeeSplit: 60, supervisionBillingMethod: 'monthly', feeMilestonePercentages: {} };
+        CONTENT.FEE_MILESTONES.forEach(item => newProject.feeMilestonePercentages[item.id] = item.defaultPercentage);
+        
+        currentProjectJobNo = jobNo;
+        populateFormWithData(newProject);
+        DOMElements['project-view-title'].textContent = `Creating New Project: ${jobNo}`;
+        showProjectView();
+        DOMElements['documents-tab'].querySelectorAll('.gallery-grid').forEach(grid => { grid.innerHTML = '<p>Please save the project before uploading documents.</p>'; });
+    }
+    function populateStaticControls() {
+        const scopeContainer = DOMElements['scope-selection-container'];
+        scopeContainer.innerHTML = '';
+        const sectionTitles = { '1': '1. Study and Design Stage', '2': '2. Preliminary Design Stage', '3': '3. Final Stage', '4': '4. Tender Documents Stage', '5': '5. Supervision Works', '6': "6. Consultant's Duties", '8': '8. Principles of Calculation', '9': "9. The Owner's Obligations", '10': '10. Amendments', '11': '11. Extension of Completion' };
+        for (const section in sectionTitles) {
+            const details = document.createElement('details'); details.open = ['1', '2', '3'].includes(section);
+            const summary = document.createElement('summary'); summary.dataset.sectionId = section; summary.textContent = sectionTitles[section]; details.appendChild(summary);
+            const groupDiv = document.createElement('div'); groupDiv.className = 'checkbox-group';
+            CONTENT.SCOPE_DEFINITIONS[section]?.forEach(item => {
+                const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" id="scope-${item.id}" data-section="${section}"><span>${item.detailed.split('</b>')[0]}</b></span>`; groupDiv.appendChild(label);
+                if (item.id === '3.2' && CONTENT.SCOPE_DEFINITIONS['3.2']) {
+                    const subGroupDiv = document.createElement('div'); subGroupDiv.className = 'checkbox-group nested-group';
+                    CONTENT.SCOPE_DEFINITIONS['3.2'].forEach(subItem => { const subLabel = document.createElement('label'); subLabel.innerHTML = `<input type="checkbox" id="scope-${subItem.id}" data-section="3.2"><span>${subItem.detailed.split('</b>')[0]}</b></span>`; subGroupDiv.appendChild(subLabel); });
+                    groupDiv.appendChild(subGroupDiv);
+                }
+            });
+            details.appendChild(groupDiv); scopeContainer.appendChild(details);
+        }
+        const feeContainer = DOMElements['fee-milestone-group']; feeContainer.innerHTML = '';
+        CONTENT.FEE_MILESTONES.forEach(item => {
+            const div = document.createElement('div'); div.className = 'milestone-percent-group'; div.innerHTML = `<span style="flex-grow:1;">${item.text}</span><input type="number" class="milestone-percentage-input" id="fee-perc-${item.id}" value="${item.defaultPercentage}" step="0.1" min="0"><span>%</span>`; feeContainer.appendChild(div);
+        });
+        const notesContainer = DOMElements['notes-group']; notesContainer.innerHTML = '';
+        CONTENT.NOTES.forEach(item => { const label = document.createElement('label'); label.innerHTML = `<input type="checkbox" id="${item.id}"><span>${item.text}</span>`; notesContainer.appendChild(label); });
+    }
+function populateControlTabs() {
+        DOMElements['main-tab'].innerHTML = `<h3>Project Info</h3><div class="input-group-grid"><div class="input-group"><label for="jobNo">Project ID / Job No.</label><input type="text" id="jobNo"></div><div class="input-group"><label for="agreementDate">Agreement Date</label><input type="date" id="agreementDate"></div></div><div class="input-group"><label for="projectStatus">Project Status</label><select id="projectStatus"><option>Pending</option><option>In Progress</option><option>Under Supervision</option><option>On Hold</option><option>Completed</option></select></div><h3>Client Details</h3><div class="input-group"><label for="clientName">Client's Name</label><input type="text" id="clientName"></div><div class="input-group-grid"><div class="input-group"><label for="clientMobile">Mobile No.</label><input type="text" id="clientMobile"></div><div class="input-group"><label for="clientEmail">Email Address</label><input type="email" id="clientEmail"></div></div><div class="input-group-grid"><div class="input-group"><label for="clientPOBox">Client P.O. Box</label><input type="text" id="clientPOBox"></div><div class="input-group"><label for="clientTrn">Client TRN</label><input type="text" id="clientTrn"></div></div><h3>Project Details</h3><div class="input-group"><label for="scopeOfWorkType">Scope of Work Type</label><select id="scopeOfWorkType"><option value="">-- Select --</option><option>New Construction</option><option>Modification</option><option>AOR Service</option><option>Extension</option><option>Interior Design</option><option>Other</option></select><div id="otherScopeTypeContainer" class="other-input-container"><input type="text" id="otherScopeType" placeholder="Specify Scope"></div></div><div class="input-group"><label for="authority">Authority</label><select id="authority"><option value="">-- Select --</option><option>DM</option><option>DDA</option><option>Trakhees</option><option>Dubai South</option><option>DCCM</option><option>JAFZA</option><option>Other</option></select><div id="otherAuthorityContainer" class="other-input-container"><input type="text" id="otherAuthority" placeholder="Specify Authority"></div></div><div class="input-group"><label for="projectType">Project Type</label><select id="projectType"><option value="">-- Select --</option><option>Residential Building</option><option>Commercial Building</option><option>Villa</option><option>Warehouse</option><option>Other</option></select></div><div class="input-group"><label for="projectDescription">Project Description</label><textarea id="projectDescription" rows="2"></textarea></div><div class="input-group-grid"><div class="input-group"><label for="plotNo">Plot No.</label><input type="text" id="plotNo"></div><div class="input-group"><label for="area">Area</label><input type="text" id="area"></div></div><div class="input-group"><label for="builtUpArea">Built-up Area (sq ft)</label><input type="number" id="builtUpArea" value="10000"></div>`;
+        DOMElements['scope-tab'].innerHTML = `<h3>Scope of Work Selection</h3><div id="scope-selection-container"></div>`;
+        DOMElements['fees-tab'].innerHTML = `<h3>Financials</h3><div class="input-group"><label for="vatRate">VAT Rate (%)</label><input type="number" id="vatRate" value="5" step="0.1"></div><hr><h3>Fee Calculation</h3><div class="input-group"><label>Remuneration Type</label><div id="remuneration-type-selector"><label><input type="radio" name="remunerationType" value="lumpSum"> Lumpsum</label><label><input type="radio" name="remunerationType" value="percentage" checked> Percentage</label></div></div><div id="lump-sum-group" class="input-group" style="display: none;"><label>Lumpsum Fee (AED)</label><input type="number" id="lumpSumFee" value="122500"></div><div id="percentage-group"><div class="input-group"><label for="constructionCostRate">Cost/sq ft (AED)</label><input type="number" id="constructionCostRate" value="350"></div><div class="input-group"><label>Est. Construction Cost</label><strong id="total-construction-cost-display">...</strong></div><div class="input-group"><label for="consultancyFeePercentage">Fee (%)</label><input type="number" id="consultancyFeePercentage" value="3.5" step="0.1"></div></div><h3>Fee Split</h3><div class="input-group-grid"><div class="input-group"><label for="designFeeSplit">Design Fee (%)</label><input type="number" id="designFeeSplit" value="60" step="1"></div><div class="input-group"><label>Supervision Fee (%)</label><strong id="supervisionFeeSplitDisplay">40%</strong></div></div><div id="financial-summary-container" class="financial-summary"></div><hr><h3>Design Fee Milestones</h3><div id="fee-milestone-group"></div><hr><h3>Supervision Fee</h3><div class="input-group"><label>Billing Method</label><div id="supervision-billing-method-selector"><label><input type="radio" name="supervisionBillingMethod" value="monthly" checked> Monthly</label><label><input type="radio" name="supervisionBillingMethod" value="progress"> Progress</label></div></div><div id="prorata-percentage-group" class="input-group" style="display:none;"><label for="prorataPercentage">Prorata (%)</label><input type="number" id="prorataPercentage" value="10" step="1"></div><h3>Timeline</h3><div class="input-group-grid"><div class="input-group"><label>Design (Months)</label><input type="number" id="designDuration" value="4"></div><div class="input-group"><label>Construction (Months)</label><input type="number" id="constructionDuration" value="14"></div></div><div class="input-group"><label>Extended Fee (AED/month)</label><input type="number" id="extendedSupervisionFee" value="7500"></div><h4>Notes & Exclusions</h4><div class="checkbox-group" id="notes-group"></div>`;
+        DOMElements['invoicing-tab'].innerHTML = `<h3>Invoice History</h3><table class="output-table"><thead><tr><th>Inv No.</th><th>Date</th><th>Amount</th><th>Status</th><th>Payment Details</th><th>Cheque Details</th></tr></thead><tbody id="invoice-history-body"></tbody></table><hr><h3>Raise New Invoice</h3><div class="input-group"><label for="newInvoiceNo">New Invoice Number</label><input type="text" id="newInvoiceNo"></div><div id="milestone-billing-container"><h4>Design Milestones</h4><table class="output-table"><thead><tr><th>Bill</th><th>Milestone</th><th>Amount</th><th>Status</th></tr></thead><tbody id="milestone-billing-body"></tbody></table></div><div id="supervision-billing-monthly-container"><h4>Supervision Fee (Monthly)</h4><div id="supervision-monthly-info"></div><button id="bill-next-month-btn" class="secondary-button">+ Add Next Month</button></div><div id="supervision-billing-progress-container" style="display:none;"><h4>Supervision Fee (Progress)</h4><div id="supervision-progress-info"></div><div class="input-group"><label for="projectProgressInput">New Total Progress (%)</label><input type="number" id="projectProgressInput" min="0" max="100" step="0.1"></div><button id="bill-by-progress-btn" class="secondary-button">+ Add Progress Bill</button></div><div id="supervision-billing-extended-container"><h4>Extended Supervision</h4><div id="extended-supervision-info"></div><button id="bill-extended-month-btn" class="secondary-button">+ Add Extended Month</button></div><div id="current-invoice-items-container" style="margin-top:20px;"><h4>Items for this Invoice</h4><table class="output-table"><thead><tr><th>Description</th><th>Amount (AED)</th><th>Action</th></tr></thead><tbody id="current-invoice-items-body"></tbody></table></div><hr><button id="raise-invoice-btn" style="width:100%; padding: 12px; font-size: 16px;">Raise Invoice from Selected Items</button>`;
+        const docCats = { client_details: { title: 'Client Details', types: ['Passport', 'Emirates_ID', 'Affection_Plan', 'Title_Deed', 'SPS', 'Oqood', 'DCR'] }, noc_copies: { title: 'NOC Copies', types: ['RTA', 'DEWA_Electrical', 'DEWA_Water', 'Du', 'Etisalat', 'Developer_NOC', 'Building_Permit', 'Other_NOC'] }, letters: { title: 'Project Letters', types: ['Incoming_Letter', 'Outgoing_Letter', 'Site_Memo'] }, other_uploads: { title: 'Other Uploads', types: ['Miscellaneous'] } };
+        let documentsHtml = '<h3>Project Documents Management</h3>';
+        for (const catKey in docCats) {
+            const category = docCats[catKey];
+            let optionsHtml = category.types.map(type => `<option value="${type.toLowerCase()}">${type.replace(/_/g, ' ')}</option>`).join('');
+            documentsHtml += `<div class="document-category" id="doc-cat-${catKey}"><h4>${category.title}</h4><div class="upload-area"><select class="doc-type-select">${optionsHtml}</select><input type="file" class="doc-file-input" accept=".jpg,.jpeg,.png,.pdf" multiple><input type="date" class="expiry-date-input" title="Set document expiry date"><button type="button" class="upload-btn" data-category="${catKey}">Upload</button></div><div class="gallery-grid"><p>Please save the project first.</p></div></div>`;
+        }
+        DOMElements['documents-tab'].innerHTML = documentsHtml;
+        DOMElements['payment-cert-tab'].innerHTML = `<h3>Payment Certificates</h3><p>Generate certificates based on the latest BOQ data from the site engineer.</p><div class="input-group"><label for="payment-cert-no">Next Certificate No.</label><input type="text" id="payment-cert-no"></div><button id="generate-new-cert-btn" class="primary-button" style="width: 100%; margin-bottom: 15px;">Generate New Certificate</button><hr><h4>Certificate History</h4><table class="output-table"><thead><tr><th>Cert. No.</th><th>Date</th><th>Net Payable</th><th>Action</th></tr></thead><tbody id="cert-history-body"></tbody></table>`;
+        DOMElements['tools-tab'].innerHTML = `<h3>Resource Calculator</h3><button id="calculateResourcesBtn">Calculate Resources</button><div id="resourcePredictionOutput"></div><hr><h3>QR Code Generator</h3><button id="generateQrCodeBtn" class="secondary-button">Generate Project QR Code</button><div id="qr-code"></div>`;
+        cacheDOMElements(); // Re-cache newly created elements
+    }
+
+    function initResizer() {
+        if(!DOMElements.resizer) return;
+        const resizer = DOMElements.resizer; const container = resizer.parentElement; const leftPanel = container.querySelector('.controls');
+        let isResizing = false, startX, startWidth;
+        resizer.addEventListener('mousedown', (e) => { e.preventDefault(); isResizing = true; startX = e.clientX; startWidth = leftPanel.offsetWidth; container.classList.add('is-resizing'); document.addEventListener('mousemove', handleMouseMove); document.addEventListener('mouseup', stopResize); });
+        function handleMouseMove(e) { if (!isResizing) return; const newWidth = startWidth + (e.clientX - startX); if (newWidth > 300 && newWidth < (container.offsetWidth - 300)) { leftPanel.style.width = newWidth + 'px'; } }
+        function stopResize() { isResizing = false; container.classList.remove('is-resizing'); document.removeEventListener('mousemove', handleMouseMove); document.removeEventListener('mouseup', stopResize); 
+		}
+    }
+    main();
+});
